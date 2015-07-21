@@ -42,34 +42,36 @@ library(plyr)
 # and some R jiggery pokey
 #
 # Extract historical estimates for a given report/date
-# and associated variable names with the report year
+# and rename them using the pattern variablename_version
+#
+# therefore inc_lo_series1 is the low bound incidence for version called series1
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 get_historical_estimates <- function(channel,version,limiting_date){
 
-  sql <- paste("SELECT country, iso3, year,
-                  e_inc_100k, e_inc_100k_lo, e_inc_100k_hi,
-              		e_prev_100k, e_prev_100k_lo, e_prev_100k_hi,
-              		e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi
-                  FROM	epi_estimates_at_date(CAST('", limiting_date, "' AS DATE))", sep="")
+  sql <- paste0("SELECT country, iso3, year,
+               e_inc_100k, e_inc_100k_lo, e_inc_100k_hi,
+               e_prev_100k, e_prev_100k_lo, e_prev_100k_hi,
+               e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi
+               FROM	epi_estimates_at_date(CAST('", limiting_date, "' AS DATE))")
 
   # Extract data from the database
-  historical <- sqlQuery(channel,sql)
+  estimates <- sqlQuery(channel,sql)
 
 
   # rename variables to include version using plyr
-  historical <- rename(historical, c("e_inc_100k" = paste("inc",version, sep=""),
-                                     "e_inc_100k_lo" = paste("inclo",version, sep=""),
-                                     "e_inc_100k_hi" = paste("inchi",version, sep=""),
-                                     "e_prev_100k" = paste("prev",version, sep=""),
-                                     "e_prev_100k_lo" = paste("prevlo",version, sep=""),
-                                     "e_prev_100k_hi" = paste("prevhi",version, sep=""),
-                                     "e_mort_exc_tbhiv_100k" = paste("mort",version, sep=""),
-                                     "e_mort_exc_tbhiv_100k_lo" = paste("mortlo",version, sep=""),
-                                     "e_mort_exc_tbhiv_100k_hi" = paste("morthi",version, sep="")))
+  estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
+                                     "e_inc_100k_lo" = paste0("inc_lo_",version),
+                                     "e_inc_100k_hi" = paste0("inc_hi_",version),
+                                     "e_prev_100k" = paste0("prev_",version),
+                                     "e_prev_100k_lo" = paste0("prev_lo_",version),
+                                     "e_prev_100k_hi" = paste0("prev_hi_",version),
+                                     "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
+                                     "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
+                                     "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version)))
 
 
-  return(historical)
+  return(estimates)
 }
 
 
@@ -77,21 +79,21 @@ get_historical_estimates <- function(channel,version,limiting_date){
 ch <- odbcDriverConnect(connection_string)
 
 
-est2012 <- get_historical_estimates(ch, "series1","2012-10-17")    #2012 report
-est2013 <- get_historical_estimates(ch, "series2","2013-12-31")    #2013 report
-est2014 <- get_historical_estimates(ch, "series3","2014-11-30")    #2014 report
+estimates_series_1 <- get_historical_estimates(ch, "series1","2012-10-17")    #2012 report
+estimates_series_2 <- get_historical_estimates(ch, "series2","2013-12-31")    #2013 report
+estimates_series_3 <- get_historical_estimates(ch, "series3","2014-11-30")    #2014 report
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
 
 close(ch)
 
-# combine the datasets into one
+# combine the three series into a single wider one called changes
 
-changes <- merge(est2014, est2013, all.x=TRUE)
-changes <- merge(changes, est2012, all.x=TRUE)
+changes <- merge(estimates_series_3, estimates_series_2, all.x=TRUE)
+changes <- merge(changes, estimates_series_1, all.x=TRUE)
 
-rm(list=c("est2012", "est2013", "est2014"))
+rm(list=c("estimates_series_1", "estimates_series_2", "estimates_series_3"))
 
 
 
@@ -104,58 +106,96 @@ rm(list=c("est2012", "est2013", "est2014"))
 #
 # Assumes the input dataframe is wide, with the three data series labelled series1, series2 and series3
 # and indicators called inc, prev and mort, with uncertainty intervals called lo and hi
-# therefore incloseries2= low bound incidence from series2
+#
+# variable format is variable_series
+#
+# therefore inc_lo_series2 is the low bound incidence from series2
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 plot_incprevmort <- function(df){
 
+  # Blue bands  = series 1 (2012 estimates)
+  # Red bands   = series 2 (2013 estimates)
+  # Green bands = series 3 (2014 estimates)
 
-  #plot incidence (faceted)
   #note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
-  print(qplot(year, incseries1, data=df, geom='line', colour=I('blue')) +
-    geom_ribbon(aes(year, ymin=incloseries1, ymax=inchiseries1), fill=I('blue'), alpha=0.2) +
-    geom_line(aes(year, incseries2), colour=I('red')) +
-    geom_ribbon(aes(year, ymin=incloseries2, ymax=inchiseries2),
-                fill=I('red'), alpha=0.2) +
-    geom_line(aes(year, incseries3), colour=I('green')) +
-    geom_ribbon(aes(year, ymin=incloseries3, ymax=inchiseries3),
-                fill=I('green'), alpha=0.2) +
-    facet_wrap(~country, scales='free_y') +
-    xlab('') + ylab('Incidence rate per 100,000 population/year') +
-    expand_limits(y=0) +
-    theme_bw(base_size=8) +
-    theme(legend.position="bottom"))
+
+  print(qplot(year, inc_series1, data=df, geom="line", colour=I("blue")) +
+        geom_ribbon(aes(year,
+                        ymin=inc_lo_series1,
+                        ymax=inc_hi_series1),
+                    fill=I("blue"), alpha=0.2) +
+
+        geom_line(aes(year, inc_series2), colour=I("red")) +
+        geom_ribbon(aes(year,
+                        ymin=inc_lo_series2,
+                        ymax=inc_hi_series2),
+                    fill=I("red"), alpha=0.2) +
+
+        geom_line(aes(year, inc_series3), colour=I("green")) +
+        geom_ribbon(aes(year,
+                        ymin=inc_lo_series3,
+                        ymax=inc_hi_series3),
+                    fill=I("green"), alpha=0.2) +
+        facet_wrap(~country, scales="free_y") +
+        xlab("") +
+        ylab("Incidence rate per 100 000 population per year") +
+        expand_limits(y=0) +
+        theme_bw(base_size=8) +
+        theme(legend.position="bottom"))
+
 
   #plot prevalence (faceted)
-  print(qplot(year, prevseries1, data=df, geom='line', colour=I('blue')) +
-    geom_ribbon(aes(year, ymin=prevloseries1, ymax=prevhiseries1), fill=I('blue'), alpha=0.2) +
-    geom_line(aes(year, prevseries2), colour=I('red')) +
-    geom_ribbon(aes(year, ymin=prevloseries2, ymax=prevhiseries2),
-                fill=I('red'), alpha=0.2) +
-    geom_line(aes(year, prevseries3), colour=I('green')) +
-    geom_ribbon(aes(year, ymin=prevloseries3, ymax=prevhiseries3),
-                fill=I('green'), alpha=0.2) +
-    facet_wrap(~country, scales='free_y') +
-    xlab('') + ylab('Prevalence rate per 100,000 population') +
-    expand_limits(y=0) +
-    theme_bw(base_size=8) +
-    theme(legend.position='none'))
+  print(qplot(year, prev_series1, data=df, geom="line", colour=I("blue")) +
+        geom_ribbon(aes(year,
+                        ymin=prev_lo_series1,
+                        ymax=prev_hi_series1),
+                    fill=I("blue"), alpha=0.2) +
+
+        geom_line(aes(year, prev_series2), colour=I("red")) +
+        geom_ribbon(aes(year,
+                        ymin=prev_lo_series2,
+                        ymax=prev_hi_series2),
+                    fill=I("red"), alpha=0.2) +
+
+        geom_line(aes(year, prev_series3), colour=I("green")) +
+        geom_ribbon(aes(year,
+                        ymin=prev_lo_series3,
+                        ymax=prev_hi_series3),
+                    fill=I("green"), alpha=0.2) +
+        facet_wrap(~country, scales="free_y") +
+        xlab("") +
+        ylab("Prevalence rate per 100 000 population") +
+        expand_limits(y=0) +
+        theme_bw(base_size=8) +
+        theme(legend.position="none"))
+
 
   #plot mortality (faceted)
-  print(qplot(year, mortseries1, data=df, geom='line', colour=I('blue')) +
-    geom_ribbon(aes(year, ymin=mortloseries1, ymax=morthiseries1), fill=I('blue'), alpha=0.2) +
-    geom_line(aes(year, mortseries2), colour=I('red')) +
-    geom_ribbon(aes(year, ymin=mortloseries2, ymax=morthiseries2),
-                fill=I('red'), alpha=0.2) +
-    geom_line(aes(year, mortseries3), colour=I('green')) +
-    geom_ribbon(aes(year, ymin=mortloseries3, ymax=morthiseries3),
-                fill=I('green'), alpha=0.2) +
-    facet_wrap(~country, scales='free_y') +
-    xlab('') + ylab('Mortality rate per 100,000 population/year') +
-    expand_limits(y=0) +
-    theme_bw(base_size=8) +
-    theme(legend.position='none'))
+  print(qplot(year, mort_series1, data=df, geom="line", colour=I("blue")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_lo_series1,
+                        ymax=mort_hi_series1),
+                    fill=I("blue"), alpha=0.2) +
+
+        geom_line(aes(year, mort_series2), colour=I("red")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_lo_series2,
+                        ymax=mort_hi_series2),
+                    fill=I("red"), alpha=0.2) +
+
+        geom_line(aes(year, mort_series3), colour=I("green")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_lo_series3,
+                        ymax=mort_hi_series3),
+                    fill=I("green"), alpha=0.2) +
+        facet_wrap(~country, scales="free_y") +
+        xlab("") +
+        ylab("Mortality rate per 100 000 population per year") +
+        expand_limits(y=0) +
+        theme_bw(base_size=8) +
+        theme(legend.position="none"))
 
 }
 
