@@ -32,14 +32,14 @@ plot_blocks_to_pdf <- function(df,
 
   #print the full blocks
   for (block in 1:full_blocks) {
-    plot_function(data_to_plot[as.character(data_to_plot$country)
+    plot_function(df[as.character(df$country)
                               %in%
                                 countries[((block - 1)*block_size + 1):(block*block_size),], ])
   }
 
   # and now print the last few (incomplete block)
   if (full_blocks*block_size < nrow(countries)){
-    plot_function(data_to_plot[as.character(data_to_plot$country)
+    plot_function(df[as.character(df$country)
                               %in%
                                 countries[(full_blocks*block_size + 1):nrow(countries),], ])
   }
