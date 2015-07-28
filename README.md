@@ -4,7 +4,7 @@
 
 ## Use
 
-1. Make sure you have your version of `get_environment.r` set up with a database connection string and where outpute files will be saved.
+1. Make sure you have your version of `set_environment.r` set up with a database connection string and where outpute files will be saved.
 
 2. Then, in R, to produce notification graphs as a PDF, `> source("review_notifications.r")`. Likewise, source `review_IPT.r` for IPT graphs, `review_TBHIV_ART.r` for HIV-positive TB and ART graphs and `review_compare_estimates.r` for overlapping estimates from different years.
 

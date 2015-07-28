@@ -26,7 +26,7 @@ file_name     <- paste0("estimates_graphs_", Sys.Date(), ".pdf")
 
 setwd(scriptsfolder)
 
-source("get_environment.r")  #particular to each person so this file is in the ignore list
+source("set_environment.r")  #particular to each person so this file is in the ignore list
 
 
 # load packages ----
@@ -79,9 +79,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 ch <- odbcDriverConnect(connection_string)
 
 
-estimates_series_1 <- get_historical_estimates(ch, "series1","2012-10-17")    #2012 report
-estimates_series_2 <- get_historical_estimates(ch, "series2","2013-12-31")    #2013 report
-estimates_series_3 <- get_historical_estimates(ch, "series3","2014-11-30")    #2014 report
+estimates_series_1 <- get_historical_estimates(ch, "series1","2013-12-31")    #2013 report (with post-publication changes)
+estimates_series_2 <- get_historical_estimates(ch, "series2","2015-05-31")    #2014 report (with post-publication changes)
+estimates_series_3 <- get_historical_estimates(ch, "series3","2015-07-31")    #2015 report (run #1)
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
