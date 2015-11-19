@@ -53,7 +53,7 @@ get_historical_estimates <- function(channel,version,limiting_date){
                e_inc_100k, e_inc_100k_lo, e_inc_100k_hi,
                e_prev_100k, e_prev_100k_lo, e_prev_100k_hi,
                e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi
-               FROM	epi_estimates_at_date(CAST('", limiting_date, "' AS DATE))")
+               FROM	epi_estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE))")
 
   # Extract data from the database
   estimates <- sqlQuery(channel,sql)
@@ -79,9 +79,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 ch <- odbcDriverConnect(connection_string)
 
 
-estimates_series_1 <- get_historical_estimates(ch, "series1","2013-12-31")    #2013 report (with post-publication changes)
-estimates_series_2 <- get_historical_estimates(ch, "series2","2015-05-31")    #2014 report (with post-publication changes)
-estimates_series_3 <- get_historical_estimates(ch, "series3","2015-07-31")    #2015 report (run #1)
+estimates_series_1 <- get_historical_estimates(ch, "series1","2015-08-12")    #2015 report (round #2)
+estimates_series_2 <- get_historical_estimates(ch, "series2","2015-08-21")    #2015 report (round #3)
+estimates_series_3 <- get_historical_estimates(ch, "series3","2015-08-31")    #2015 report (round #4)
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
