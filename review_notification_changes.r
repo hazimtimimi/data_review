@@ -1,7 +1,7 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Look at % and absolute change in notifications using data from previous years and
 # the latest data reported to us
-# Hazim Timimi, June 2015
+# Hazim Timimi, November 2015
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # clear the decks
@@ -12,21 +12,27 @@ rm(list=ls())
 # This depends on the person, location, machine used etc.and populates the following:
 #
 # scriptsfolder:      Folder containing these scripts
-# file_name:          Name of the PDF output file
+# file_name_pcnt:     Name of the PDF output file for % changes
+# file_name_delta:    Name of the PDF output file for changes in absolute numers
 #
-# The next two are set using get_environment.r
+# start_year:         Starting year for the graphs
+# minimum_notifs:     Minimum number of notifications reported in the data collection form
+#                     for the coutnry to be included in the graphs
+#
+# The next two are set using set_environment.r
 #
 # outfolder:          Folder containing output subfolders for tables and figures
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
+setwd(scriptsfolder)
 
 file_name_pcnt <- paste0("notif_change_pcnt_", Sys.Date(), ".pdf")
 file_name_delta <- paste0("notif_change_delta_", Sys.Date(), ".pdf")
 
-
-setwd(scriptsfolder)
+start_year <- 2010
+minimum_notifs <- 1000
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 
@@ -48,13 +54,13 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, c_newinc
+sql <- paste("SELECT country, year, c_newinc
         FROM dcf.latest_notification
         UNION ALL
         SELECT country, year, c_newinc
         FROM view_TME_master_notification
-        WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification)
-        ORDER BY country,year"
+        WHERE year BETWEEN ", start_year, " AND (SELECT max(year - 1) from dcf.latest_notification)
+        ORDER BY country,year")
 
 
 # Extract data from the database
@@ -62,7 +68,7 @@ channel <- odbcDriverConnect(connection_string)
 notifs <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE c_newinc >= 1000 ORDER BY country")
+countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_notification WHERE c_newinc >= ",minimum_notifs ," ORDER BY country"))
 
 close(channel)
 
