@@ -14,7 +14,7 @@ rm(list=ls())
 # scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
-# The next two are set using get_environment.r
+# The next two are set using set_environment.r
 #
 # outfolder:          Folder containing output subfolders for tables and figures
 # connection_string:  ODBC connection string to the global TB database
@@ -26,7 +26,7 @@ file_name     <- paste0("notifs_graphs_", Sys.Date(), ".pdf")
 
 setwd(scriptsfolder)
 
-source("get_environment.r")  #particular to each person so this file is in the ignore list
+source("set_environment.r")  #particular to each person so this file is in the ignore list
 
 
 # load packages ----

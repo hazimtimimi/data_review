@@ -14,7 +14,7 @@ rm(list=ls())
 # scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
-# The next two are set using get_environment.r
+# The next two are set using set_environment.r
 #
 # outfolder:          Folder containing output subfolders for tables and figures
 # connection_string:  ODBC connection string to the global TB database
