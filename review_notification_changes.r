@@ -88,6 +88,9 @@ notifs <- union(notifs_historic, notifs_dcf) %>%
                                         (c_newinc - c_newinc_prev) * 100 / c_newinc_prev),
                  c_newinc_delta = c_newinc - c_newinc_prev)
 
+# capture final year in a variable
+dcf_year <- first(notifs_dcf$year)
+
 
 # Define graph layout ----
 # - - - - - - - - - - -
@@ -105,7 +108,12 @@ plot_faceted_pcnt <- function(df){
             # Hide background gridlines
             theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
             # Add a black line to highlight 0%
-            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed")
+            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed") +
+            # Add a shaded ribbon showing glm mean and standard errors
+            # But do this on all years except the final (dcf) year to get a visual hint
+            # as to whether the final point deviates recent trends
+            # (although I'm not sure if this is sound methodologically ...)
+            geom_smooth(data = filter(df, year < dcf_year), method="glm", colour = "black")
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
