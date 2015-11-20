@@ -31,7 +31,7 @@ setwd(scriptsfolder)
 file_name_pcnt <- paste0("notif_change_pcnt_", Sys.Date(), ".pdf")
 file_name_delta <- paste0("notif_change_delta_", Sys.Date(), ".pdf")
 
-start_year <- 2010
+start_year <- 2007
 minimum_notifs <- 1000
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
@@ -43,45 +43,49 @@ library(RODBC)
 library(ggplot2)
 
 
-
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Get the data  ----
-#
-# I prefer to do this via SQL, but could be done of course with the pure views
-# and some R jiggery pokey
-#
-# The query combines data from the master notification view with latest data
-# reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-sql <- paste("SELECT country, year, c_newinc
-        FROM dcf.latest_notification
-        UNION ALL
-        SELECT country, year, c_newinc
-        FROM view_TME_master_notification
-        WHERE year BETWEEN ", start_year, " AND (SELECT max(year - 1) from dcf.latest_notification)
-        ORDER BY country,year")
 
 
 # Extract data from the database
 channel <- odbcDriverConnect(connection_string)
-notifs <- sqlQuery(channel,sql)
 
-# get list of countries
-countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_notification WHERE c_newinc >= ",minimum_notifs ," ORDER BY country"))
+# latest notifications reported in the dcf views (dcf = data collection form)
+notifs_dcf <- sqlQuery(channel, "SELECT country, year, c_newinc
+                                FROM dcf.latest_notification",
+                       stringsAsFactors = FALSE)
+
+# notifications reported in previous years
+notifs_historic <- sqlQuery(channel,
+                      paste("SELECT country, year, c_newinc
+                            FROM view_TME_master_notification
+                            WHERE year BETWEEN ", start_year,
+                            " AND (SELECT max(year - 1) from dcf.latest_notification)"),
+                       stringsAsFactors = FALSE)
 
 close(channel)
+
 
 # Calculate % change in notifications  ----
 # - - - - - - - - - - -
 
-notifs <- notifs %>%
+# Identify countries exceeding notification threshold to show in the output
+countries <- notifs_dcf %>%
+              filter(c_newinc >= minimum_notifs) %>%
+              select(country) %>%
+              arrange(country)
+
+
+# Combine the dcf and historic notifications and do the maths
+notifs <- union(notifs_historic, notifs_dcf) %>%
+          arrange(country, year) %>%
           group_by(country) %>%
           mutate(c_newinc_prev = lag(c_newinc)) %>%
           ungroup() %>%
           mutate(c_newinc_pcnt = ifelse(c_newinc_prev == 0,
                                         NA,
-                                        (c_newinc / c_newinc_prev) - 1 ),
+                                        (c_newinc - c_newinc_prev) * 100 / c_newinc_prev),
                  c_newinc_delta = c_newinc - c_newinc_prev)
 
 
@@ -93,11 +97,15 @@ plot_faceted_pcnt <- function(df){
   # Blue line  = Year on year % change in new and relapse cases
 
   graphs <- qplot(year, c_newinc_pcnt, data=df, geom="line", colour=I("blue")) +
-            facet_wrap(~country, scales="fixed") +
-            xlab("year") + ylab("Change in new and relapse cases (proportion)") +
-            expand_limits(y=c(-0.1,0.1)) +
+            facet_wrap(~country, scales="free_y") +
+            xlab("year") + ylab("Annual change in new and relapse cases (%)") +
+            expand_limits(y=c(-10,10)) +
             theme_bw(base_size=8) +
-            theme(legend.position="bottom")
+            theme(legend.position="bottom") +
+            # Hide background gridlines
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            # Add a black line to highlight 0%
+            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed")
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -111,10 +119,14 @@ plot_faceted_delta <- function(df){
 
   graphs <- qplot(year, c_newinc_delta, data=df, geom="line", colour=I("blue")) +
             facet_wrap(~country, scales="free_y") +
-            xlab("year") + ylab("Change in new and relapse cases (number)") +
+            xlab("year") + ylab("Annual change in new and relapse cases (number)") +
             expand_limits(y=0) +
             theme_bw(base_size=8) +
-            theme(legend.position="bottom")
+            theme(legend.position="bottom")  +
+            # Hide background gridlines
+            theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+            # Add a black line to highlight 0
+            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed")
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -135,8 +147,6 @@ setwd(outfolder)
 plot_blocks_to_pdf(notifs, countries, file_name_pcnt, plot_function = plot_faceted_pcnt)
 plot_blocks_to_pdf(notifs, countries, file_name_delta, plot_function = plot_faceted_delta)
 
-# clear the decks
-rm(list=ls())
 
 
 
