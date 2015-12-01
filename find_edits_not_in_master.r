@@ -47,21 +47,62 @@ Null_to_minus_1 <- function(x){
 # Get the data  ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-
-# Extract data from the database
 channel <- odbcDriverConnect(connection_string)
 
-# latest notifications reported in the dcf view (dcf = data collection form)
-notifs_dcf <- sqlQuery(channel, "SELECT *
-                                FROM dcf.latest_notification",
+# A. Latest data from the dcf views (dcf = data collection form)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# notifications
+notifs_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_notification",
                        stringsAsFactors = FALSE)
 
-# notifications already in the master view for the same year
+# tbhiv *_f series
+tbhiv_f_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_tbhiv_f",
+                       stringsAsFactors = FALSE)
+
+# treatment outcomes
+outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_outcomes",
+                       stringsAsFactors = FALSE)
+
+# mdr/xdr treatment outcomes
+mdr_xdr_outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_mdr_xdr_outcomes",
+                       stringsAsFactors = FALSE)
+
+
+# B. Older records already in the master views (match years to dcf years)
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+
 notifs_master <- sqlQuery(channel,
                       paste("SELECT *
                             FROM view_TME_master_notification
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_notification)"),
                        stringsAsFactors = FALSE)
+
+tbhiv_f_master <- sqlQuery(channel,
+                      paste("SELECT *
+                            FROM view_TME_master_notification
+                            WHERE year = (SELECT MAX(year) FROM dcf.latest_tbhiv_f)"),
+                       stringsAsFactors = FALSE)
+
+# dr surveillance records are in the dcf notifications view!
+dr_surveillance_master <- sqlQuery(channel,
+                          paste("SELECT *
+                                FROM view_TME_master_dr_surveillance
+                                WHERE year = (SELECT MAX(year) FROM dcf.latest_notification)"),
+                           stringsAsFactors = FALSE)
+
+outcomes_master <- sqlQuery(channel,
+                      paste("SELECT *
+                            FROM view_TME_master_outcomes
+                            WHERE year = (SELECT MAX(year) FROM dcf.latest_outcomes)"),
+                       stringsAsFactors = FALSE)
+
+mdr_xdr_outcomes_master <- sqlQuery(channel,
+                            paste("SELECT *
+                                  FROM view_TME_master_outcomes
+                                  WHERE year = (SELECT MAX(year) FROM dcf.latest_mdr_xdr_outcomes)"),
+                             stringsAsFactors = FALSE)
 
 close(channel)
 
@@ -71,34 +112,79 @@ close(channel)
 # (called unpivoting in SQL-Server)
 # Use iso2 in addition to variable name as row keys for DCF
 # and keep country in row keys for master for ease of reading results
+# Wrap it all up in a function
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-notifs_dcf_long <- notifs_dcf %>%
-                    # restrict to the same variable names as in notifs_master
-                    select(which(names(notifs_dcf) %in% names(notifs_master))) %>%
+compare_views <- function(dcf_view, master_view){
+
+
+  dcf_view_long <- dcf_view %>%
+                    # restrict to the same variable names as in master_view
+                    select(which(names(dcf_view) %in% names(master_view))) %>%
                     # drop country, year and remarks
                     select(-country, -year, -starts_with("remarks")) %>%
                     gather(key=var_name, value=value_dcf, -iso2) %>%
                     # convert nulls to -1
                     mutate(value_dcf=Null_to_minus_1(value_dcf))
 
-
-notifs_master_long <- notifs_master %>%
+  master_view_long <- master_view %>%
                       # remove un-needed variables before "tidying"
-                      # so just restrict to the same variable names as in notifs_dcf
-                      select(which(names(notifs_master) %in% names(notifs_dcf))) %>%
+                      # so just restrict to the same variable names as in dcf_view
+                      select(which(names(master_view) %in% names(dcf_view))) %>%
                       gather(key=var_name, value=value_master, -iso2, -country, -year ) %>%
                       # convert to strings to make comparisons easier, including for NAs
                       mutate(value_master=Null_to_minus_1(value_master))
 
+  # Join the two long views and look for differences  ----
+  # - - - - - - - - - - -
 
-# Join the two and look for differences  ----
-# - - - - - - - - - - -
-
-notifs_diff <- notifs_master_long %>%
-                inner_join(notifs_dcf_long) %>%
+  views_diff <- master_view_long %>%
+                inner_join(dcf_view_long) %>%
                 filter( value_master != value_dcf) %>%
                 arrange(country, var_name)
 
+  return(views_diff)
+}
 
-View(notifs_diff)
+
+stop("
+
+>>>>>>>>>>>>>>
+
+Righto, now you can look for differences interactively
+
+<<<<<<<<<<<<<<
+
+")
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Now do the comparisons  ----
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+notifs_diff <- compare_views(dcf_view = notifs_dcf, master_view = notifs_master)
+
+tbhiv_f_diff <- compare_views(dcf_view = tbhiv_f_dcf, master_view = tbhiv_f_master)
+
+# dr surveillance records are in the dcf notifications view!
+dr_surveillance_diff <- compare_views(dcf_view = notifs_dcf, master_view = dr_surveillance_master)
+
+
+
+# treatment success rates are not rounded in the outcomes dcf views, so round them now to match
+# properly with master views
+
+outcomes_dcf$c_new_tsr <- round(outcomes_dcf$c_new_tsr)
+outcomes_dcf$c_ret_tsr <- round(outcomes_dcf$c_ret_tsr)
+outcomes_dcf$c_tbhiv_tsr <- round(outcomes_dcf$c_tbhiv_tsr)
+
+outcomes_diff <- compare_views(dcf_view = outcomes_dcf, master_view = outcomes_master)
+
+
+
+mdr_xdr_outcomes_dcf$c_mdr_tsr <- round(mdr_xdr_outcomes_dcf$c_mdr_tsr)
+mdr_xdr_outcomes_dcf$c_xdr_tsr <- round(mdr_xdr_outcomes_dcf$c_xdr_tsr)
+
+mdr_xdr_outcomes_diff <- compare_views(dcf_view = mdr_xdr_outcomes_dcf, master_view = mdr_xdr_outcomes_master)
+
+
