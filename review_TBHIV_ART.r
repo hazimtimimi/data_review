@@ -44,27 +44,19 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, hivtest_pos_p AS hivtest_pos, hiv_art_p AS hiv_art, hiv_tbrx_art
+sql <- "SELECT country, year, newrel_hivpos AS hivtest_pos, newrel_art AS hiv_art, hiv_tbrx_art
               FROM dcf.latest_notification
-              WHERE hivtest_pos_p IS NOT NULL
+              WHERE newrel_hivpos IS NOT NULL
              UNION ALL
-             /* see if final figures available for two years ago */
-             SELECT view_TME_master_notification.country, view_TME_master_notification.year,
-             COALESCE(dcf.latest_tbhiv_f.hivtest_pos_f, view_TME_master_notification.hivtest_pos_p) AS hivtest_pos,
-             COALESCE(dcf.latest_tbhiv_f.hiv_art_f, view_TME_master_notification.hiv_art_p) AS hiv_art,
-             NULL AS hiv_tbrx_art
-             FROM view_TME_master_notification INNER JOIN
-             dcf.latest_tbhiv_f ON
-             view_TME_master_notification.iso2 = dcf.latest_tbhiv_f.iso2 AND
-             view_TME_master_notification.year = dcf.latest_tbhiv_f.year
-             WHERE view_TME_master_notification.iso2 IN (SELECT iso2 from dcf.latest_notification WHERE hivtest_pos_p IS NOT NULL)
-             /* master data older than two years ago */
-             UNION ALL
-             SELECT country, year, COALESCE(hivtest_pos_f, hivtest_pos_p) AS hivtest_pos, COALESCE(hiv_art_f, hiv_art_p) AS hiv_art, NULL AS hiv_tbrx_art
+             /* master data from previous years */
+             SELECT country, year,
+                    COALESCE(hivtest_pos_f, hivtest_pos_p) AS hivtest_pos,
+                    COALESCE(hiv_art_f, hiv_art_p) AS hiv_art,
+                    NULL AS hiv_tbrx_art
              FROM view_TME_master_notification
-             WHERE year BETWEEN 2006 AND (SELECT max(year - 2) from dcf.latest_notification) AND
-             iso2 IN (SELECT iso2 from dcf.latest_notification WHERE hivtest_pos_p IS NOT NULL)
-             ORDER BY country,year"
+             WHERE year BETWEEN 2006 AND (SELECT max(year - 1) from dcf.latest_notification) AND
+             iso2 IN (SELECT iso2 from dcf.latest_notification WHERE newrel_hivpos IS NOT NULL)
+             ORDER BY country,year;"
 
 
 # Extract data from the database
@@ -72,7 +64,7 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE hivtest_pos_p IS NOT NULL ORDER BY country")
+countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE newrel_hivpos IS NOT NULL ORDER BY country;")
 
 close(channel)
 
