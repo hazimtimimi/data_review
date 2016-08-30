@@ -56,9 +56,6 @@ channel <- odbcDriverConnect(connection_string)
 notifs_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_notification",
                        stringsAsFactors = FALSE)
 
-# tbhiv *_f series
-tbhiv_f_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_tbhiv_f",
-                       stringsAsFactors = FALSE)
 
 # treatment outcomes
 outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_outcomes",
@@ -68,6 +65,13 @@ outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_outcomes",
 mdr_xdr_outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_mdr_xdr_outcomes",
                        stringsAsFactors = FALSE)
 
+# strategy -- just test the variables that affect profiles
+strategy_dcf <- sqlQuery(channel, "SELECT country, year, iso2, prevtx_data_available, newinc_con04_prevtx, ptsurvey_newinc, ptsurvey_newinc_con04_prevtx FROM dcf.latest_strategy",
+                       stringsAsFactors = FALSE)
+
+# budget -- just test the variables that affect profiles
+budget_dcf <- sqlQuery(channel, "SELECT country, year, iso2, budget_tot, cf_tot_domestic, cf_tot_gf, cf_tot_usaid, cf_tot_grnt, gap_tot FROM dcf.latest_budget_services",
+                       stringsAsFactors = FALSE)
 
 # B. Older records already in the master views (match years to dcf years)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -77,12 +81,6 @@ notifs_master <- sqlQuery(channel,
                       paste("SELECT *
                             FROM view_TME_master_notification
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_notification)"),
-                       stringsAsFactors = FALSE)
-
-tbhiv_f_master <- sqlQuery(channel,
-                      paste("SELECT *
-                            FROM view_TME_master_notification
-                            WHERE year = (SELECT MAX(year) FROM dcf.latest_tbhiv_f)"),
                        stringsAsFactors = FALSE)
 
 # dr surveillance records are in the dcf notifications view!
@@ -103,6 +101,17 @@ mdr_xdr_outcomes_master <- sqlQuery(channel,
                                   FROM view_TME_master_outcomes
                                   WHERE year = (SELECT MAX(year) FROM dcf.latest_mdr_xdr_outcomes)"),
                              stringsAsFactors = FALSE)
+
+
+strategy_master <- sqlQuery(channel, "SELECT country, year, iso2, prevtx_data_available, newinc_con04_prevtx, ptsurvey_newinc, ptsurvey_newinc_con04_prevtx
+                            FROM view_TME_master_strategy
+                            WHERE year = (SELECT MAX(year) FROM dcf.latest_strategy)",
+                       stringsAsFactors = FALSE)
+
+budget_master <- sqlQuery(channel, "SELECT country, year, iso2, budget_tot, cf_tot_domestic, cf_tot_gf, cf_tot_usaid, cf_tot_grnt, gap_tot
+                          FROM view_TME_master_budget_expenditure
+                          WHERE year = (SELECT MAX(year) FROM dcf.latest_budget_services)",
+                       stringsAsFactors = FALSE)
 
 close(channel)
 
@@ -164,7 +173,6 @@ Righto, now you can look for differences interactively
 
 notifs_diff <- compare_views(dcf_view = notifs_dcf, master_view = notifs_master)
 
-tbhiv_f_diff <- compare_views(dcf_view = tbhiv_f_dcf, master_view = tbhiv_f_master)
 
 # dr surveillance records are in the dcf notifications view!
 dr_surveillance_diff <- compare_views(dcf_view = notifs_dcf, master_view = dr_surveillance_master)
@@ -186,5 +194,10 @@ mdr_xdr_outcomes_dcf$c_mdr_tsr <- round(mdr_xdr_outcomes_dcf$c_mdr_tsr)
 mdr_xdr_outcomes_dcf$c_xdr_tsr <- round(mdr_xdr_outcomes_dcf$c_xdr_tsr)
 
 mdr_xdr_outcomes_diff <- compare_views(dcf_view = mdr_xdr_outcomes_dcf, master_view = mdr_xdr_outcomes_master)
+
+
+strategy_diff <- compare_views(dcf_view = strategy_dcf, master_view = strategy_master)
+
+budget_diff <- compare_views(dcf_view = budget_dcf, master_view = budget_master)
 
 
