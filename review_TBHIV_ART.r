@@ -50,8 +50,8 @@ sql <- "SELECT country, year, newrel_hivpos AS hivtest_pos, newrel_art AS hiv_ar
              UNION ALL
              /* master data from previous years */
              SELECT country, year,
-                    COALESCE(hivtest_pos_f, hivtest_pos_p) AS hivtest_pos,
-                    COALESCE(hiv_art_f, hiv_art_p) AS hiv_art,
+                    COALESCE(newrel_hivpos, hivtest_pos_f, hivtest_pos_p) AS hivtest_pos,
+                    COALESCE(newrel_art, hiv_art_f, hiv_art_p) AS hiv_art,
                     NULL AS hiv_tbrx_art
              FROM view_TME_master_notification
              WHERE year BETWEEN 2006 AND (SELECT max(year - 1) from dcf.latest_notification) AND
