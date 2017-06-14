@@ -72,8 +72,8 @@ plot_faceted <- function(df){
   # Green dots = Cases among workers at health care facilities
 
 
-graphs <- qplot(year, hcw_tot, data=df, geom="point", colour=I("blue")) +
-          geom_point(aes(year, hcw_tb_infected), colour=I("green")) +
+graphs <- qplot(year, hcw_tot, data=df, geom="point", colour=I("blue"), alpha=0.2) +
+          geom_point(aes(year, hcw_tb_infected), colour=I("green"), alpha=0.5) +
           facet_wrap(~country, scales="free_y") +
           xlab("year") + ylab("Number of people") +
           expand_limits(y=0) +
