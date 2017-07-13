@@ -65,12 +65,16 @@ outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_outcomes",
 mdr_xdr_outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_mdr_xdr_outcomes",
                        stringsAsFactors = FALSE)
 
-# strategy -- just test the variables that affect profiles
-strategy_dcf <- sqlQuery(channel, "SELECT country, year, iso2, prevtx_data_available, newinc_con04_prevtx, ptsurvey_newinc, ptsurvey_newinc_con04_prevtx FROM dcf.latest_strategy",
+# strategy
+strategy_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_strategy",
                        stringsAsFactors = FALSE)
 
-# budget -- just test the variables that affect profiles
-budget_dcf <- sqlQuery(channel, "SELECT country, year, iso2, budget_tot, cf_tot_domestic, cf_tot_gf, cf_tot_usaid, cf_tot_grnt, gap_tot FROM dcf.latest_budget_services",
+# budget
+budget_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_budget",
+                       stringsAsFactors = FALSE)
+
+# expenditures and services
+expenditure_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_expenditure_services",
                        stringsAsFactors = FALSE)
 
 # B. Older records already in the master views (match years to dcf years)
@@ -103,15 +107,21 @@ mdr_xdr_outcomes_master <- sqlQuery(channel,
                              stringsAsFactors = FALSE)
 
 
-strategy_master <- sqlQuery(channel, "SELECT country, year, iso2, prevtx_data_available, newinc_con04_prevtx, ptsurvey_newinc, ptsurvey_newinc_con04_prevtx
+strategy_master <- sqlQuery(channel, "SELECT *
                             FROM view_TME_master_strategy
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_strategy)",
                        stringsAsFactors = FALSE)
 
-budget_master <- sqlQuery(channel, "SELECT country, year, iso2, budget_tot, cf_tot_domestic, cf_tot_gf, cf_tot_usaid, cf_tot_grnt, gap_tot
+budget_master <- sqlQuery(channel, "SELECT *
                           FROM view_TME_master_budget_expenditure
-                          WHERE year = (SELECT MAX(year) FROM dcf.latest_budget_services)",
+                          WHERE year = (SELECT MAX(year) FROM dcf.latest_budget)",
                        stringsAsFactors = FALSE)
+
+expenditure_master <- sqlQuery(channel, "SELECT *
+                          FROM view_TME_master_budget_expenditure
+                          WHERE year = (SELECT MAX(year) FROM dcf.latest_expenditure_services)",
+                       stringsAsFactors = FALSE)
+
 
 close(channel)
 
@@ -200,4 +210,8 @@ strategy_diff <- compare_views(dcf_view = strategy_dcf, master_view = strategy_m
 
 budget_diff <- compare_views(dcf_view = budget_dcf, master_view = budget_master)
 
+expenditure_diff <- compare_views(dcf_view = expenditure_dcf, master_view = expenditure_master)
 
+
+budget_diff %>% filter(value_master != -1 & value_dcf != 0) %>% View()
+expenditure_diff %>% filter(value_master != -1 & value_dcf != 0) %>% View()
