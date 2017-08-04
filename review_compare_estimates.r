@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Compare estimates of incidence, prevalence and mortality from three separate
+# Compare estimates of incidence and mortality from three separate
 # Global TB reports
 # Hazim Timimi, December 2014, based on original code from Babis Sismanidis
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -12,7 +12,7 @@ rm(list=ls())
 # This depends on the person, location, machine used etc.and populates the following:
 #
 # scriptsfolder:      Folder containing these scripts
-# file_name:          Name of the PDF output file
+# file_name_*:        Names of the PDF output files
 #
 # The next two are set using set_environment.r
 #
@@ -22,7 +22,10 @@ rm(list=ls())
 
 scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
 
-file_name     <- paste0("estimates_graphs_", Sys.Date(), ".pdf")
+file_name_inc      <- paste0("inc_graphs_", Sys.Date(), ".pdf")
+file_name_inc_hiv  <- paste0("inc_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_mort     <- paste0("mort_graphs_", Sys.Date(), ".pdf")
+file_name_mort_hiv <- paste0("mort_hiv_graphs_", Sys.Date(), ".pdf")
 
 setwd(scriptsfolder)
 
@@ -51,8 +54,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 
   sql <- paste0("SELECT country, iso3, year,
                e_inc_100k, e_inc_100k_lo, e_inc_100k_hi,
-               e_prev_100k, e_prev_100k_lo, e_prev_100k_hi,
-               e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi
+               e_inc_tbhiv_100k, e_inc_tbhiv_100k_lo, e_inc_tbhiv_100k_hi,
+               e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi,
+               e_mort_tbhiv_100k, e_mort_tbhiv_100k_lo, e_mort_tbhiv_100k_hi
                FROM	epi_estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE))")
 
   # Extract data from the database
@@ -63,12 +67,15 @@ get_historical_estimates <- function(channel,version,limiting_date){
   estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
                                      "e_inc_100k_lo" = paste0("inc_lo_",version),
                                      "e_inc_100k_hi" = paste0("inc_hi_",version),
-                                     "e_prev_100k" = paste0("prev_",version),
-                                     "e_prev_100k_lo" = paste0("prev_lo_",version),
-                                     "e_prev_100k_hi" = paste0("prev_hi_",version),
+                                     "e_inc_tbhiv_100k" = paste0("inc_hiv_",version),
+                                     "e_inc_tbhiv_100k_lo" = paste0("inc_hiv_lo_",version),
+                                     "e_inc_tbhiv_100k_hi" = paste0("inc_hiv_hi_",version),
                                      "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
                                      "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
-                                     "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version)))
+                                     "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version),
+                                     "e_mort_tbhiv_100k" = paste0("mort_hiv_",version),
+                                     "e_mort_tbhiv_100k_lo" = paste0("mort_hiv_lo_",version),
+                                     "e_mort_tbhiv_100k_hi" = paste0("mort_hiv_hi_",version)))
 
 
   return(estimates)
@@ -79,9 +86,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 ch <- odbcDriverConnect(connection_string)
 
 
-estimates_series_1 <- get_historical_estimates(ch, "series1","2015-08-12")    #2015 report (round #2)
-estimates_series_2 <- get_historical_estimates(ch, "series2","2015-08-21")    #2015 report (round #3)
-estimates_series_3 <- get_historical_estimates(ch, "series3","2015-08-31")    #2015 report (round #4)
+estimates_series_1 <- get_historical_estimates(ch, "series1","2016-03-31")    #2015 report final version
+estimates_series_2 <- get_historical_estimates(ch, "series2","2016-10-31")    #2016 report final version
+estimates_series_3 <- get_historical_estimates(ch, "series3","2017-08-04")    #2017 report (round #1)
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
@@ -100,7 +107,7 @@ rm(list=c("estimates_series_1", "estimates_series_2", "estimates_series_3"))
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Define graph layout ----
 #
-# Plot 3 sets of graphs (incidence, prevalence, mortality)
+# Plot 4 sets of graphs (incidence, TB/HIV incidence, mortality excl HIV, TB/HIV mortality)
 # Each graph shows three series for the same indicator, each from a separate global report.
 # Series will overlap, hence make them transparent -- I've used alpha=0.2
 #
@@ -112,14 +119,17 @@ rm(list=c("estimates_series_1", "estimates_series_2", "estimates_series_3"))
 # therefore inc_lo_series2 is the low bound incidence from series2
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-plot_incprevmort <- function(df){
+plot_inc <- function(df){
 
-  # Blue bands  = series 1 (2012 estimates)
-  # Red bands   = series 2 (2013 estimates)
-  # Green bands = series 3 (2014 estimates)
+  #plot incidence (faceted)
+
+  # Blue bands  = series 1
+  # Red bands   = series 2
+  # Green bands = series 3
 
   #note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
+
 
   print(qplot(year, inc_series1, data=df, geom="line", colour=I("blue")) +
         geom_ribbon(aes(year,
@@ -144,35 +154,49 @@ plot_incprevmort <- function(df){
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="bottom"))
+}
 
+plot_inc_hiv <- function(df){
 
-  #plot prevalence (faceted)
-  print(qplot(year, prev_series1, data=df, geom="line", colour=I("blue")) +
+  # plot TB/HIV incidence (faceted)
+
+  # Blue bands  = series 1
+  # Red bands   = series 2
+  # Green bands = series 3
+
+  print(qplot(year, inc_hiv_series1, data=df, geom="line", colour=I("blue")) +
         geom_ribbon(aes(year,
-                        ymin=prev_lo_series1,
-                        ymax=prev_hi_series1),
+                        ymin=inc_hiv_lo_series1,
+                        ymax=inc_hiv_hi_series1),
                     fill=I("blue"), alpha=0.2) +
 
-        geom_line(aes(year, prev_series2), colour=I("red")) +
+        geom_line(aes(year, inc_hiv_series2), colour=I("red")) +
         geom_ribbon(aes(year,
-                        ymin=prev_lo_series2,
-                        ymax=prev_hi_series2),
+                        ymin=inc_hiv_lo_series2,
+                        ymax=inc_hiv_hi_series2),
                     fill=I("red"), alpha=0.2) +
 
-        geom_line(aes(year, prev_series3), colour=I("green")) +
+        geom_line(aes(year, inc_hiv_series3), colour=I("green")) +
         geom_ribbon(aes(year,
-                        ymin=prev_lo_series3,
-                        ymax=prev_hi_series3),
+                        ymin=inc_hiv_lo_series3,
+                        ymax=inc_hiv_hi_series3),
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("Prevalence rate per 100 000 population") +
+        ylab("HIV-positive TB incidence rate per 100 000 population per year") +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
-        theme(legend.position="none"))
+        theme(legend.position="bottom"))
+}
 
+plot_mort <- function(df){
 
-  #plot mortality (faceted)
+  # plot HIV-negative mortality (faceted)
+
+  # Blue bands  = series 1
+  # Red bands   = series 2
+  # Green bands = series 3
+
   print(qplot(year, mort_series1, data=df, geom="line", colour=I("blue")) +
         geom_ribbon(aes(year,
                         ymin=mort_lo_series1,
@@ -192,7 +216,40 @@ plot_incprevmort <- function(df){
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("Mortality rate per 100 000 population per year") +
+        ylab("Mortality (excluding TB/HIV) rate per 100 000 population per year") +
+        expand_limits(y=0) +
+        theme_bw(base_size=8) +
+        theme(legend.position="none"))
+}
+
+plot_mort_hiv <- function(df){
+
+  # plot HIV-positive TB mortality (faceted)
+
+  # Blue bands  = series 1
+  # Red bands   = series 2
+  # Green bands = series 3
+
+  print(qplot(year, mort_hiv_series1, data=df, geom="line", colour=I("blue")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_hiv_lo_series1,
+                        ymax=mort_hiv_hi_series1),
+                    fill=I("blue"), alpha=0.2) +
+
+        geom_line(aes(year, mort_hiv_series2), colour=I("red")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_hiv_lo_series2,
+                        ymax=mort_hiv_hi_series2),
+                    fill=I("red"), alpha=0.2) +
+
+        geom_line(aes(year, mort_hiv_series3), colour=I("green")) +
+        geom_ribbon(aes(year,
+                        ymin=mort_hiv_lo_series3,
+                        ymax=mort_hiv_hi_series3),
+                    fill=I("green"), alpha=0.2) +
+        facet_wrap(~country, scales="free_y") +
+        xlab("") +
+        ylab("HIV-positive TB mortality rate per 100 000 population per year") +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="none"))
@@ -209,7 +266,10 @@ source("plot_blocks_to_pdf.r")
 
 setwd(outfolder)
 
-plot_blocks_to_pdf(changes, countries, file_name, plot_function = plot_incprevmort)
+plot_blocks_to_pdf(changes, countries, file_name_inc,     plot_function = plot_inc)
+plot_blocks_to_pdf(changes, countries, file_name_inc_hiv, plot_function = plot_inc_hiv)
+plot_blocks_to_pdf(changes, countries, file_name_mort,    plot_function = plot_mort)
+plot_blocks_to_pdf(changes, countries, file_name_mort_hiv,plot_function = plot_mort_hiv)
 
 # clear the decks
 rm(list=ls())
