@@ -151,7 +151,7 @@ compare_views <- function(dcf_view, master_view){
                       # so just restrict to the same variable names as in dcf_view
                       select(which(names(master_view) %in% names(dcf_view))) %>%
                       gather(key=var_name, value=value_master, -iso2, -country, -year ) %>%
-                      # convert to strings to make comparisons easier, including for NAs
+                      # convert nulls to -1
                       mutate(value_master=Null_to_minus_1(value_master))
 
   # Join the two long views and look for differences  ----
@@ -159,34 +159,34 @@ compare_views <- function(dcf_view, master_view){
 
   views_diff <- master_view_long %>%
                 inner_join(dcf_view_long) %>%
-                filter( value_master != value_dcf) %>%
+                filter( as.numeric(value_master) != as.numeric(value_dcf)) %>%
                 arrange(country, var_name)
 
   return(views_diff)
 }
 
 
-stop("
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Save file to CSV, with date in filename  ----
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+to_csv <- function(df, filename) {
 
->>>>>>>>>>>>>>
+  write.csv(df, file = paste0(outfolder, filename, Sys.Date(), ".csv"), row.names = FALSE)
 
-Righto, now you can look for differences interactively
-
-<<<<<<<<<<<<<<
-
-")
+}
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Now do the comparisons  ----
+# Now do the comparisons, and write results to CSV   ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 notifs_diff <- compare_views(dcf_view = notifs_dcf, master_view = notifs_master)
+to_csv(notifs_diff, "notifs_diff")
 
 
 # dr surveillance records are in the dcf notifications view!
 dr_surveillance_diff <- compare_views(dcf_view = notifs_dcf, master_view = dr_surveillance_master)
-
+to_csv(dr_surveillance_diff, "dr_surveillance_diff")
 
 
 # treatment success rates are not rounded in the outcomes dcf views, so round them now to match
@@ -197,6 +197,7 @@ outcomes_dcf$c_ret_tsr <- round(outcomes_dcf$c_ret_tsr)
 outcomes_dcf$c_tbhiv_tsr <- round(outcomes_dcf$c_tbhiv_tsr)
 
 outcomes_diff <- compare_views(dcf_view = outcomes_dcf, master_view = outcomes_master)
+to_csv(outcomes_diff, "outcomes_diff")
 
 
 
@@ -204,14 +205,25 @@ mdr_xdr_outcomes_dcf$c_mdr_tsr <- round(mdr_xdr_outcomes_dcf$c_mdr_tsr)
 mdr_xdr_outcomes_dcf$c_xdr_tsr <- round(mdr_xdr_outcomes_dcf$c_xdr_tsr)
 
 mdr_xdr_outcomes_diff <- compare_views(dcf_view = mdr_xdr_outcomes_dcf, master_view = mdr_xdr_outcomes_master)
+to_csv(mdr_xdr_outcomes_diff, "mdr_xdr_outcomes_diff")
+
 
 
 strategy_diff <- compare_views(dcf_view = strategy_dcf, master_view = strategy_master)
+to_csv(strategy_diff, "strategy_diff")
+
+
 
 budget_diff <- compare_views(dcf_view = budget_dcf, master_view = budget_master)
+# remove empty rows (master = -1 or dcf = 0)
+budget_diff <- budget_diff %>% filter(value_master != -1 & value_dcf != 0)
+to_csv(budget_diff, "budget_diff")
+
 
 expenditure_diff <- compare_views(dcf_view = expenditure_dcf, master_view = expenditure_master)
+# remove empty rows (master = -1 or dcf = 0)
+expenditure_diff <- expenditure_diff %>% filter(value_master != -1 & value_dcf != 0)
+to_csv(expenditure_diff, "expenditure_diff")
 
 
-budget_diff %>% filter(value_master != -1 & value_dcf != 0) %>% View()
-expenditure_diff %>% filter(value_master != -1 & value_dcf != 0) %>% View()
+
