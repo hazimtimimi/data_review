@@ -20,14 +20,12 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
 
 file_name_inc      <- paste0("inc_graphs_", Sys.Date(), ".pdf")
 file_name_inc_hiv  <- paste0("inc_hiv_graphs_", Sys.Date(), ".pdf")
 file_name_mort     <- paste0("mort_graphs_", Sys.Date(), ".pdf")
 file_name_mort_hiv <- paste0("mort_hiv_graphs_", Sys.Date(), ".pdf")
 
-setwd(scriptsfolder)
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 
@@ -86,9 +84,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 ch <- odbcDriverConnect(connection_string)
 
 
-estimates_series_1 <- get_historical_estimates(ch, "series1","2016-03-31")    #2015 report final version
-estimates_series_2 <- get_historical_estimates(ch, "series2","2016-10-31")    #2016 report final version
-estimates_series_3 <- get_historical_estimates(ch, "series3","2017-08-04")    #2017 report (round #1)
+estimates_series_1 <- get_historical_estimates(ch, "series1","2016-10-31")    #2016 report final version
+estimates_series_2 <- get_historical_estimates(ch, "series2","2018-04-30")    #2017 report final version
+estimates_series_3 <- get_historical_estimates(ch, "series3","2018-07-31")    #2018 report (round #1
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
