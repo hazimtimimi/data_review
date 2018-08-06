@@ -215,15 +215,20 @@ to_csv(strategy_diff, "strategy_diff")
 
 
 budget_diff <- compare_views(dcf_view = budget_dcf, master_view = budget_master)
-# remove empty rows (master = -1 or dcf = 0)
-budget_diff <- budget_diff %>% filter(value_master != -1 & value_dcf != 0)
 to_csv(budget_diff, "budget_diff")
 
 
+# remove empty rows (master = -1 or dcf = 0)
+budget_diff <- budget_diff %>% filter(value_master != -1 & value_dcf != 0)
+to_csv(budget_diff, "budget_ignore_nonreporters_diff")
+
+
 expenditure_diff <- compare_views(dcf_view = expenditure_dcf, master_view = expenditure_master)
+to_csv(expenditure_diff, "expenditure_diff")
+
 # remove empty rows (master = -1 or dcf = 0)
 expenditure_diff <- expenditure_diff %>% filter(value_master != -1 & value_dcf != 0)
-to_csv(expenditure_diff, "expenditure_diff")
+to_csv(expenditure_diff, "expenditure_ignore_nonreporters_diff")
 
 
 
