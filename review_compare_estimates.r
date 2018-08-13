@@ -14,10 +14,13 @@ rm(list=ls())
 # scriptsfolder:      Folder containing these scripts
 # file_name_*:        Names of the PDF output files
 #
-# The next two are set using set_environment.r
+# The next variables are set using set_environment.r
 #
 # outfolder:          Folder containing output subfolders for tables and figures
 # connection_string:  ODBC connection string to the global TB database
+# series_1_date:      Date at which estimates for series 1 were valid
+# series_2_date:      Date at which estimates for series 2 were valid
+# series_3_date:      Date at which estimates for series 3 were valid
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -83,10 +86,9 @@ get_historical_estimates <- function(channel,version,limiting_date){
 # Extract data from the database
 ch <- odbcDriverConnect(connection_string)
 
-
-estimates_series_1 <- get_historical_estimates(ch, "series1","2016-10-31")    #2016 report final version
-estimates_series_2 <- get_historical_estimates(ch, "series2","2018-04-30")    #2017 report final version
-estimates_series_3 <- get_historical_estimates(ch, "series3","2018-07-31")    #2018 report (round #1
+estimates_series_1 <- get_historical_estimates(ch, "series1", series_1_date)
+estimates_series_2 <- get_historical_estimates(ch, "series2", series_2_date)
+estimates_series_3 <- get_historical_estimates(ch, "series3", series_3_date)
 
 # get list of countries
 countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
