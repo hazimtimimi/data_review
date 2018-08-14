@@ -134,19 +134,17 @@ plot_dr <- function(df){
                               ymax=e_rr_prop_ret_hi_series1),
                           colour="blue") +
 
-          geom_pointrange(aes(x=year,
+          geom_pointrange(aes(x=year-0.1,
                               y=e_rr_prop_new_series2,
                               ymin=e_rr_prop_new_lo_series2,
                               ymax=e_rr_prop_new_hi_series2),
-                          colour="gray",
-                          size = 1.3) +
+                          colour="gray") +
 
-          geom_pointrange(aes(x=year,
+          geom_pointrange(aes(x=year-0.1,
                               y=e_rr_prop_ret_series2,
                               ymin=e_rr_prop_ret_lo_series2,
                               ymax=e_rr_prop_ret_hi_series2),
-                          colour="gray",
-                          size = 1.3) +
+                          colour="gray") +
 
           geom_pointrange(aes(x=year,
                               y=e_rr_prop_new_series3,
