@@ -1,5 +1,5 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Compare estimates of incidence from the 4 most recent global TB reports
+# Compare estimates of incidence and mortality from the 4 most recent global TB reports
 # for USAID (based on original code in review_compare_estimates.r)
 # Hazim Timimi
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -22,7 +22,7 @@ rm(list=ls())
 
 
 file_name_inc      <- paste0("inc_graphs_USAID_", Sys.Date(), ".pdf")
-
+file_name_mort     <- paste0("mort_graphs_USAID_", Sys.Date(), ".pdf")
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
@@ -49,7 +49,8 @@ library(plyr)
 get_historical_estimates <- function(channel,version,limiting_date){
 
   sql <- paste0("SELECT country, iso3, year,
-               e_inc_100k, e_inc_100k_lo, e_inc_100k_hi
+               e_inc_100k, e_inc_100k_lo, e_inc_100k_hi,
+               e_mort_exc_tbhiv_100k, e_mort_exc_tbhiv_100k_lo, e_mort_exc_tbhiv_100k_hi
                FROM	epi_estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE))")
 
   # Extract data from the database
@@ -58,8 +59,11 @@ get_historical_estimates <- function(channel,version,limiting_date){
 
   # rename variables to include version using plyr
   estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
-                                     "e_inc_100k_lo" = paste0("inc_lo_",version),
-                                     "e_inc_100k_hi" = paste0("inc_hi_",version)))
+                                   "e_inc_100k_lo" = paste0("inc_lo_",version),
+                                   "e_inc_100k_hi" = paste0("inc_hi_",version),
+                                   "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
+                                   "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
+                                   "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version)))
 
 
   return(estimates)
@@ -153,6 +157,48 @@ plot_inc <- function(df){
 }
 
 
+plot_mort <- function(df){
+
+  # plot HIV-negative mortality (faceted)
+
+  # Blue bands  = series 1
+  # Red bands   = series 2
+  # Green bands = series 3
+  # Yellow bands  = series 4
+
+  print(qplot(year, mort_series1, data=df, geom="line", colour=I("blue")) +
+          geom_ribbon(aes(year,
+                          ymin=mort_lo_series1,
+                          ymax=mort_hi_series1),
+                      fill=I("blue"), alpha=0.2) +
+
+          geom_line(aes(year, mort_series2), colour=I("red")) +
+          geom_ribbon(aes(year,
+                          ymin=mort_lo_series2,
+                          ymax=mort_hi_series2),
+                      fill=I("red"), alpha=0.2) +
+
+          geom_line(aes(year, mort_series3), colour=I("green")) +
+          geom_ribbon(aes(year,
+                          ymin=mort_lo_series3,
+                          ymax=mort_hi_series3),
+                      fill=I("green"), alpha=0.2) +
+
+          geom_line(aes(year, mort_series4), colour=I("yellow")) +
+          geom_ribbon(aes(year,
+                          ymin=mort_lo_series4,
+                          ymax=mort_hi_series4),
+                      fill=I("yellow"), alpha=0.2) +
+
+
+          facet_wrap(~country, scales="free_y") +
+          xlab("") +
+          ylab("Mortality (excluding TB/HIV) rate per 100 000 population per year") +
+          expand_limits(y=0) +
+          theme_bw(base_size=8) +
+          theme(legend.position="none"))
+}
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Plot the graphs to PDF -------
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -163,7 +209,7 @@ source("plot_blocks_to_pdf.r")
 setwd(outfolder)
 
 plot_blocks_to_pdf(changes, countries, file_name_inc,     plot_function = plot_inc)
-
+plot_blocks_to_pdf(changes, countries, file_name_mort,    plot_function = plot_mort)
 
 # clear the decks
 rm(list=ls())
