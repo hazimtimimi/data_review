@@ -29,6 +29,9 @@ source("set_environment.r")  #particular to each person so this file is in the i
 
 file_name     <- paste0(outfolder, "mf_graphs_", Sys.Date(), ".pdf")
 
+# Notifications threshold (exclude countries below the threshold)
+notif_threshold <- 1000
+
 
 # load packages ----
 library(RODBC)
@@ -106,8 +109,8 @@ countries <-  data_to_plot %>%
               mutate(mf_prev = lag(mf_ratio)) %>%
               ungroup() %>%
               filter((mf_prev > 1 & mf_ratio < 1) | (mf_prev < 1 & mf_ratio > 1) ) %>%
-              # remove countries with notifications < 100
-              filter(c_newinc >= 100) %>%
+              # remove countries with notifications less than the threshold
+              filter(c_newinc >= notif_threshold) %>%
               select(country)
 
 
