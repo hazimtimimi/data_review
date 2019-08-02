@@ -21,13 +21,16 @@ rm(list=ls())
 # series_1_date:      Date at which estimates for series 1 were valid
 # series_2_date:      Date at which estimates for series 2 were valid
 # series_3_date:      Date at which estimates for series 3 were valid
+#
+# g_whoregion:        WHO regional code to filter charts
+#                     (if not specified then charts are produced for all countries)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-file_name_inc      <- paste0("inc_graphs_", Sys.Date(), ".pdf")
-file_name_inc_hiv  <- paste0("inc_hiv_graphs_", Sys.Date(), ".pdf")
-file_name_mort     <- paste0("mort_graphs_", Sys.Date(), ".pdf")
-file_name_mort_hiv <- paste0("mort_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_inc      <- paste0(g_whoregion, "inc_graphs_", Sys.Date(), ".pdf")
+file_name_inc_hiv  <- paste0(g_whoregion, "inc_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_mort     <- paste0(g_whoregion, "mort_graphs_", Sys.Date(), ".pdf")
+file_name_mort_hiv <- paste0(g_whoregion, "mort_hiv_graphs_", Sys.Date(), ".pdf")
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
@@ -91,8 +94,13 @@ estimates_series_2 <- get_historical_estimates(ch, "series2", series_2_date)
 estimates_series_3 <- get_historical_estimates(ch, "series3", series_3_date)
 
 # get list of countries
-countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
+country_sql <- ifelse(g_whoregion == "",
+                    "SELECT country FROM view_TME_master_report_country ORDER BY country",
+                    paste0("SELECT country FROM view_TME_master_report_country WHERE g_whoregion = '", g_whoregion, "' ORDER BY country"))
 
+
+
+countries <- sqlQuery(ch, country_sql)
 close(ch)
 
 # combine the three series into a single wider one called changes
@@ -264,15 +272,14 @@ plot_mort_hiv <- function(df){
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-setwd(outfolder)
+block_size <- ifelse(g_whoregion == "SEA", 8, 16)
 
-plot_blocks_to_pdf(changes, countries, file_name_inc,     plot_function = plot_inc)
-plot_blocks_to_pdf(changes, countries, file_name_inc_hiv, plot_function = plot_inc_hiv)
-plot_blocks_to_pdf(changes, countries, file_name_mort,    plot_function = plot_mort)
-plot_blocks_to_pdf(changes, countries, file_name_mort_hiv,plot_function = plot_mort_hiv)
+plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_inc),     plot_function = plot_inc, block_size)
+plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_inc_hiv), plot_function = plot_inc_hiv, block_size)
+plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_mort),    plot_function = plot_mort, block_size)
+plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_mort_hiv),plot_function = plot_mort_hiv, block_size)
 
-# clear the decks
-rm(list=ls())
+
 
 
 

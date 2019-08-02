@@ -25,13 +25,17 @@ rm(list=ls())
 # series_1_startyear: Year to start series 1
 # series_2_startyear: Year to start series 1
 # series_3_startyear: Year to start series 1
+#
+# g_whoregion:        WHO regional code to filter charts
+#                     (if not specified then charts are produced for all countries)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-file_name_dr    <- paste0("dr_graphs_", Sys.Date(), ".pdf")
-
-
 source("set_environment.r")  # particular to each person so this file is in the ignore list
+
+
+file_name_dr    <- paste0(g_whoregion, "dr_graphs_", Sys.Date(), ".pdf")
+
 
 
 # load packages ----
@@ -63,7 +67,7 @@ get_historical_estimates <- function(channel,version,limiting_date, start_year){
   estimates <- sqlQuery(channel,sql)
 
 
-  # rename variables to include version using plyr
+  # rename variables to include version using dplyr
   estimates <- estimates %>%
                rename_at(vars(starts_with("e_rr_prop")),
                          funs(paste0(.,"_" , version)))
@@ -80,7 +84,13 @@ estimates_series_2 <- get_historical_estimates(ch, "series2", series_2_date, ser
 estimates_series_3 <- get_historical_estimates(ch, "series3", series_3_date, series_3_startyear)
 
 # get list of countries
-countries <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country ORDER BY country")
+country_sql <- ifelse(g_whoregion == "",
+                    "SELECT country FROM view_TME_master_report_country ORDER BY country",
+                    paste0("SELECT country FROM view_TME_master_report_country WHERE g_whoregion = '", g_whoregion, "' ORDER BY country"))
+
+
+
+countries <- sqlQuery(ch, country_sql)
 
 close(ch)
 
@@ -114,6 +124,9 @@ plot_dr <- function(df){
   # Blue bands  = series 1
   # Red bands   = series 2
   # Green bands = series 3
+  #
+  # the circle (shape=16) is best estimate of RR-TB among new cases and
+  # the diamond (shape=18) is best estimate of RR-TB among previously treated cases
 
   #note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -126,39 +139,46 @@ plot_dr <- function(df){
                               y=e_rr_prop_new_series1,
                               ymin=e_rr_prop_new_lo_series1,
                               ymax=e_rr_prop_new_hi_series1),
-                          colour="blue") +
+                          colour="blue",
+                          shape=16) +
 
           geom_pointrange(aes(x=year,
                               y=e_rr_prop_ret_series1,
                               ymin=e_rr_prop_ret_lo_series1,
                               ymax=e_rr_prop_ret_hi_series1),
-                          colour="blue") +
+                          colour="blue",
+                          shape=18) +
 
           geom_pointrange(aes(x=year-0.1,
                               y=e_rr_prop_new_series2,
                               ymin=e_rr_prop_new_lo_series2,
                               ymax=e_rr_prop_new_hi_series2),
-                          colour="gray") +
+                          colour="red",
+                          shape=16) +
 
           geom_pointrange(aes(x=year-0.1,
                               y=e_rr_prop_ret_series2,
                               ymin=e_rr_prop_ret_lo_series2,
                               ymax=e_rr_prop_ret_hi_series2),
-                          colour="gray") +
+                          colour="red",
+                          shape=18) +
 
           geom_pointrange(aes(x=year,
                               y=e_rr_prop_new_series3,
                               ymin=e_rr_prop_new_lo_series3,
                               ymax=e_rr_prop_new_hi_series3),
-                          colour="black") +
+                          colour="green",
+                          shape=16) +
 
           geom_pointrange(aes(x=year,
                               y=e_rr_prop_ret_series3,
                               ymin=e_rr_prop_ret_lo_series3,
                               ymax=e_rr_prop_ret_hi_series3),
-                          colour="black") +
+                          colour="green",
+                          shape=18) +
 
           facet_wrap(~country, scales="free_y") +
+          scale_x_continuous(breaks = c(series_1_startyear, series_2_startyear, series_3_startyear)) +
           xlab("") +
           ylab("Proportion of cases with rifampicin resistance") +
           expand_limits(y=0) +
@@ -174,15 +194,16 @@ plot_dr <- function(df){
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-#setwd(outfolder)
+block_size <- ifelse(g_whoregion == "SEA", 8, 16)
+
 
 plot_blocks_to_pdf(dr_estimates,
                    countries,
-                   paste0(outfolder, "/", file_name_dr),
-                   plot_function = plot_dr)
+                   paste0(outfolder, file_name_dr),
+                   plot_function = plot_dr,
+                   block_size)
 
-# clear the decks
-rm(list=ls())
+
 
 
 
