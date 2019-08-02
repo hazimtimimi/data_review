@@ -27,19 +27,20 @@ rm(list=ls())
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
+source("set_environment.r")  #particular to each person so this file is in the ignore list
+
+
 file_name_inc      <- paste0(g_whoregion, "inc_graphs_", Sys.Date(), ".pdf")
 file_name_inc_hiv  <- paste0(g_whoregion, "inc_hiv_graphs_", Sys.Date(), ".pdf")
 file_name_mort     <- paste0(g_whoregion, "mort_graphs_", Sys.Date(), ".pdf")
 file_name_mort_hiv <- paste0(g_whoregion, "mort_hiv_graphs_", Sys.Date(), ".pdf")
 
 
-source("set_environment.r")  #particular to each person so this file is in the ignore list
-
-
 # load packages ----
 library(RODBC)
 library(ggplot2)
-library(plyr)
+library(dplyr)
+library(stringr)
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -67,19 +68,32 @@ get_historical_estimates <- function(channel,version,limiting_date){
   estimates <- sqlQuery(channel,sql)
 
 
-  # rename variables to include version using plyr
-  estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
-                                     "e_inc_100k_lo" = paste0("inc_lo_",version),
-                                     "e_inc_100k_hi" = paste0("inc_hi_",version),
-                                     "e_inc_tbhiv_100k" = paste0("inc_hiv_",version),
-                                     "e_inc_tbhiv_100k_lo" = paste0("inc_hiv_lo_",version),
-                                     "e_inc_tbhiv_100k_hi" = paste0("inc_hiv_hi_",version),
-                                     "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
-                                     "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
-                                     "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version),
-                                     "e_mort_tbhiv_100k" = paste0("mort_hiv_",version),
-                                     "e_mort_tbhiv_100k_lo" = paste0("mort_hiv_lo_",version),
-                                     "e_mort_tbhiv_100k_hi" = paste0("mort_hiv_hi_",version)))
+  # rename variables -- shorten and add version using dplyr
+  estimates <- estimates %>%
+               rename_at(vars(starts_with("e_inc_100k")),
+                         funs(paste0(str_replace(., "e_inc_100k" , "inc"),"_" , version))) %>%
+
+               rename_at(vars(starts_with("e_inc_tbhiv_100k")),
+                         funs(paste0(str_replace(., "e_inc_tbhiv_100k" , "inc_hiv"),"_" , version))) %>%
+
+               rename_at(vars(starts_with("e_mort_exc_tbhiv_100k")),
+                         funs(paste0(str_replace(., "e_mort_exc_tbhiv_100k" , "mort"),"_" , version))) %>%
+
+               rename_at(vars(starts_with("e_mort_tbhiv_100k")),
+                         funs(paste0(str_replace(., "e_mort_tbhiv_100k" , "mort_hiv"),"_" , version)))
+
+  # estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
+  #                                    "e_inc_100k_lo" = paste0("inc_lo_",version),
+  #                                    "e_inc_100k_hi" = paste0("inc_hi_",version),
+  #                                    "e_inc_tbhiv_100k" = paste0("inc_hiv_",version),
+  #                                    "e_inc_tbhiv_100k_lo" = paste0("inc_hiv_lo_",version),
+  #                                    "e_inc_tbhiv_100k_hi" = paste0("inc_hiv_hi_",version),
+  #                                    "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
+  #                                    "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
+  #                                    "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version),
+  #                                    "e_mort_tbhiv_100k" = paste0("mort_hiv_",version),
+  #                                    "e_mort_tbhiv_100k_lo" = paste0("mort_hiv_lo_",version),
+  #                                    "e_mort_tbhiv_100k_hi" = paste0("mort_hiv_hi_",version)))
 
 
   return(estimates)
