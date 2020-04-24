@@ -20,8 +20,9 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-file_name_inc       <- paste0("inc_graphs_", Sys.Date(), ".pdf")
-file_name_inc014    <- paste0("inc014_graphs_", Sys.Date(), ".pdf")
+file_name_inc     <- paste0("inc_graphs_", Sys.Date(), ".pdf")
+file_name_inc014  <- paste0("inc014_graphs_", Sys.Date(), ".pdf")
+file_name_inc_dr  <- paste0("inc_dr_graphs_", Sys.Date(), ".pdf")
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
@@ -34,6 +35,11 @@ library(dplyr)
 library(tidyr)
 library(stringr)
 library(readxl)
+
+# Get Function to plot multiple graphs to multi-page PDF -----
+source("plot_blocks_to_pdf.r")
+
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Get the USAID target  ----
@@ -51,10 +57,11 @@ targets <- read_excel(path = usaid_targets_file,
 targets <- targets %>%
   pivot_longer(cols = starts_with("20"),
                names_to = "year",
+               #convert year field to integers
                names_ptypes = list(year = integer()),
                values_to = "target",
                values_drop_na = TRUE)
-  #convert year field to integers
+
 
 
 # Store the list of country codes separately for later use
@@ -92,7 +99,6 @@ get_historical_estimates <- function(channel,version,limiting_date){
   return(estimates)
 }
 
-
 # Extract data from the database
 ch <- odbcDriverConnect(connection_string)
 
@@ -107,7 +113,24 @@ estimates_series_4 <- get_historical_estimates(ch, "series4", series_4_date)
 countries <- sqlQuery(ch, "SELECT iso2, country FROM view_TME_master_report_country")
 
 # get notifications
-notifs <- sqlQuery(ch, "SELECT iso2, year, c_newinc FROM view_TME_master_notification WHERE year >= 2000")
+notifs <- sqlQuery(ch, "SELECT iso2, year, c_newinc
+                   FROM view_TME_master_notification
+                   WHERE year >= 2000")
+
+# get the rr incidence estimates -- since we only produce estimates for the latest year
+# in each report it is easy to extract the data as a timeseries, even though it really isn't a
+# timeseries since estimates of the previous years are null and void
+dr_estimates <- sqlQuery(ch, "SELECT iso2, year, e_inc_rr_num, e_inc_rr_num_lo, e_inc_rr_num_hi
+                         FROM view_TME_estimates_drtb_rawvalues
+                         WHERE year >= 2015")
+
+# get the number of rr patients started on treatment
+rr_tx <- sqlQuery(ch, "SELECT iso2, year,
+                  CASE WHEN COALESCE(unconf_rrmdr_tx, conf_rrmdr_tx) IS NULL THEN NULL
+			                 ELSE ISNULL(unconf_rrmdr_tx, 0) + ISNULL(conf_rrmdr_tx, 0)
+		              END AS rrmdr_tx
+		              FROM view_TME_master_notification
+                  WHERE year >= 2015")
 
 close(ch)
 
@@ -133,7 +156,7 @@ changes_targets <- changes_targets %>%
   inner_join(countries, by = "iso2")
 
 # Create the country list for the plot_blocks_to_pdf() function
-countries <- countries %>%
+country_list <- countries %>%
   mutate(iso2 = as.character(iso2)) %>%
   inner_join(iso2_list) %>%
   mutate(country = as.character(country)) %>%
@@ -223,14 +246,62 @@ plot_inc <- function(df){
 }
 
 
+# Plot the incidence graphs to PDF -------
+plot_blocks_to_pdf(changes_targets, country_list, paste0(outfolder, file_name_inc), plot_function = plot_inc)
+
+
+
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Plot the graphs to PDF -------
+# Now do the plots for RR/MDR -------
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# Get Function to plot multiple graphs to multi-page PDF
-source("plot_blocks_to_pdf.r")
+# Combine the estimates with numbers started on treatement
+dr_changes <- merge(dr_estimates, rr_tx, all.x = TRUE)
 
+# Add the USAID targets
+dr_changes_targets <- targets %>%
+  filter(target_code== "tgt_dr") %>%
+  select(-target_code) %>%
+  merge(dr_changes, all = TRUE)
 
-plot_blocks_to_pdf(changes_targets, countries, paste0(outfolder, file_name_inc), plot_function = plot_inc)
+# Add country names
+dr_changes_targets <- dr_changes_targets %>%
+  inner_join(countries, by = "iso2")
 
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define DR graph layout ----
+#
+# Plot RR incidence estimates as fishbones, number started on treatment as
+# a black line and the USAID country targets as black points
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+plot_dr_inc <- function(df){
+
+  print(
+
+   ggplot(data = df, mapping = aes(x=year, y=e_inc_rr_num, ymin=0, colour = I("#009E73"))) +
+
+     geom_pointrange(aes(x=year, ymin=e_inc_rr_num_lo, ymax=e_inc_rr_num_hi)) +
+
+     # Add the numbers started on treatment as a black line
+     geom_line(aes(x=year, y=rrmdr_tx, colour=I("black"))) +
+
+     # add the targets as dots
+     geom_point(aes(x=year, y=target, colour=I("black"))) +
+
+      # Use space separators for the y axis
+      scale_y_continuous(labels = rounder) +
+
+      facet_wrap(~country, scales="free_y") +
+      xlab("") +
+      ylab("DR-TB Incidence, notifications and targets (number per year)") +
+      expand_limits(y=0) +
+      theme_bw(base_size=8) +
+      theme(legend.position="bottom")
+
+  )
+}
+
+# Plot the incidence graphs to PDF -------
+plot_blocks_to_pdf(dr_changes_targets, country_list, paste0(outfolder, file_name_inc_dr), plot_function = plot_dr_inc)
