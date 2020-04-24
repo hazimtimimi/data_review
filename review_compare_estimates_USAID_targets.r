@@ -99,7 +99,47 @@ get_historical_estimates <- function(channel,version,limiting_date){
   return(estimates)
 }
 
-# Extract data from the database
+
+# Have to do something different for 0-14 incidence because that is only ever done for the
+# latest year of data available. In dcyear 2018 changed from doing this in wide format in the
+# main epi estimates view to long format allowing for more diaggregations. Therefore there are
+# two functions here, depending on the year
+
+get_wide_014_estimates <- function(channel, limiting_date, year){
+
+  sql <- paste0("SELECT iso2, year,
+                e_inc_num_014 AS best, e_inc_num_014_lo AS lo, e_inc_num_014_hi AS hi
+                FROM epi_estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE))
+                WHERE year = ", year)
+
+  estimates <- sqlQuery(channel,sql)
+
+  return(estimates)
+}
+
+get_long_014_estimates <- function(channel, limiting_date, year){
+
+ sql <- paste0("SELECT	iso2, year, best, lo, hi
+                FROM	estimates.estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE))
+                WHERE	measure = 'inc' AND
+            		unit = 'num' AND
+            		age_group = '0-14' AND
+            		sex = 'a' AND
+            		risk_factor = 'all' AND
+            		year = ", year)
+
+  estimates <- sqlQuery(channel,sql)
+
+  return(estimates)
+}
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+#
+# Extract data from the database ----
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 ch <- odbcDriverConnect(connection_string)
 
 
@@ -131,6 +171,19 @@ rr_tx <- sqlQuery(ch, "SELECT iso2, year,
 		              END AS rrmdr_tx
 		              FROM view_TME_master_notification
                   WHERE year >= 2015")
+
+# Get the incidence estimate for age 0-14
+estimates_014_series_1 <- get_wide_014_estimates(ch, series_1_date, series_1_startyear)
+estimates_014_series_2 <- get_wide_014_estimates(ch, series_2_date, series_2_startyear)
+
+estimates_014_series_3 <- get_long_014_estimates(ch, series_3_date, series_3_startyear)
+estimates_014_series_4 <- get_long_014_estimates(ch, series_4_date, series_4_startyear)
+
+# Get notifications in children aged 0-14
+notifs_014 <- sqlQuery(ch, paste0("SELECT iso2, year, c_new_014
+                             FROM view_TME_master_notification
+                             WHERE year >= ", series_1_startyear))
+
 
 close(ch)
 
@@ -247,7 +300,10 @@ plot_inc <- function(df){
 
 
 # Plot the incidence graphs to PDF -------
-plot_blocks_to_pdf(changes_targets, country_list, paste0(outfolder, file_name_inc), plot_function = plot_inc)
+plot_blocks_to_pdf(changes_targets,
+                   country_list,
+                   paste0(outfolder, file_name_inc),
+                   plot_function = plot_inc)
 
 
 
@@ -303,5 +359,75 @@ plot_dr_inc <- function(df){
   )
 }
 
+# Plot the DR incidence graphs to PDF -------
+plot_blocks_to_pdf(dr_changes_targets,
+                   country_list,
+                   paste0(outfolder, file_name_inc_dr),
+                   plot_function = plot_dr_inc)
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Now do the plots for incidence in children aged 0-14 -------
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+# Combine the estimates into one long table
+kids_changes <- rbind(estimates_014_series_1, estimates_014_series_2, estimates_014_series_3, estimates_014_series_4)
+
+rm(list=ls(pattern = "^estimates_014_series"))
+
+# Add the notifications
+kids_changes <- merge(kids_changes, notifs_014, all.x = TRUE)
+
+# Add the targets
+kids_changes_targets <- targets %>%
+  filter(target_code== "tgt_014") %>%
+  select(-target_code) %>%
+  merge(kids_changes, all = TRUE)
+
+# Add country names
+kids_changes_targets <- kids_changes_targets %>%
+  inner_join(countries, by = "iso2")
+
+
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+# Define kids graph layout ----
+#
+# Plot 0-14 incidence estimates as fishbones, number of children notified as
+# a black line and the USAID country targets as black points
+#
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+plot_014_inc <- function(df){
+
+  print(
+
+   ggplot(data = df, mapping = aes(x=year, y=best, ymin=0, colour = I("#009E73"))) +
+
+     geom_pointrange(aes(x=year, ymin=lo, ymax=hi)) +
+
+     # Add the numbers started on treatment as a black line
+     geom_line(aes(x=year, y=c_new_014, colour=I("black"))) +
+
+     # add the targets as dots
+     geom_point(aes(x=year, y=target, colour=I("black"))) +
+
+      # Use space separators for the y axis
+      scale_y_continuous(labels = rounder) +
+
+      facet_wrap(~country, scales="free_y") +
+      xlab("") +
+      ylab("Incidence, notifications and targets for childrenn aged 0-14 (number per year)") +
+      expand_limits(y=0) +
+      theme_bw(base_size=8) +
+      theme(legend.position="bottom")
+
+  )
+}
+
 # Plot the incidence graphs to PDF -------
-plot_blocks_to_pdf(dr_changes_targets, country_list, paste0(outfolder, file_name_inc_dr), plot_function = plot_dr_inc)
+plot_blocks_to_pdf(kids_changes_targets,
+                   country_list,
+                   paste0(outfolder, file_name_inc014),
+                   plot_function = plot_014_inc)
+
+
