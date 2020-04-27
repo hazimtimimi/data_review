@@ -145,8 +145,6 @@ ch <- odbcDriverConnect(connection_string)
 
 estimates_series_1 <- get_historical_estimates(ch, "series1", series_1_date)
 estimates_series_2 <- get_historical_estimates(ch, "series2", series_2_date)
-estimates_series_3 <- get_historical_estimates(ch, "series3", series_3_date)
-estimates_series_4 <- get_historical_estimates(ch, "series4", series_4_date)
 
 
 # get master list of countries
@@ -160,27 +158,24 @@ notifs <- sqlQuery(ch, "SELECT iso2, year, c_newinc
 # get the rr incidence estimates -- since we only produce estimates for the latest year
 # in each report it is easy to extract the data as a timeseries, even though it really isn't a
 # timeseries since estimates of the previous years are null and void
-dr_estimates <- sqlQuery(ch, "SELECT iso2, year, e_inc_rr_num, e_inc_rr_num_lo, e_inc_rr_num_hi
+dr_estimates <- sqlQuery(ch, paste("SELECT iso2, year, e_inc_rr_num, e_inc_rr_num_lo, e_inc_rr_num_hi
                          FROM view_TME_estimates_drtb_rawvalues
-                         WHERE year >= 2015")
+                         WHERE year >= ", series_1_startyear) )
 
 # get the number of rr patients started on treatment
-rr_tx <- sqlQuery(ch, "SELECT iso2, year,
+rr_tx <- sqlQuery(ch, paste("SELECT iso2, year,
                   CASE WHEN COALESCE(unconf_rrmdr_tx, conf_rrmdr_tx) IS NULL THEN NULL
 			                 ELSE ISNULL(unconf_rrmdr_tx, 0) + ISNULL(conf_rrmdr_tx, 0)
 		              END AS rrmdr_tx
 		              FROM view_TME_master_notification
-                  WHERE year >= 2015")
+                  WHERE year >= ", series_1_startyear))
 
 # Get the incidence estimate for age 0-14
-estimates_014_series_1 <- get_wide_014_estimates(ch, series_1_date, series_1_startyear)
-estimates_014_series_2 <- get_wide_014_estimates(ch, series_2_date, series_2_startyear)
-
-estimates_014_series_3 <- get_long_014_estimates(ch, series_3_date, series_3_startyear)
-estimates_014_series_4 <- get_long_014_estimates(ch, series_4_date, series_4_startyear)
+estimates_014_series_1 <- get_long_014_estimates(ch, series_1_date, series_1_startyear)
+estimates_014_series_2 <- get_long_014_estimates(ch, series_2_date, series_2_startyear)
 
 # Get notifications in children aged 0-14
-notifs_014 <- sqlQuery(ch, paste0("SELECT iso2, year, c_new_014
+notifs_014 <- sqlQuery(ch, paste("SELECT iso2, year, c_new_014
                              FROM view_TME_master_notification
                              WHERE year >= ", series_1_startyear))
 
@@ -188,10 +183,7 @@ notifs_014 <- sqlQuery(ch, paste0("SELECT iso2, year, c_new_014
 close(ch)
 
 # combine the three series into a single wider one called changes
-
-changes <- merge(estimates_series_4, estimates_series_3, all.x=TRUE)
-changes <- merge(changes, estimates_series_2, all.x=TRUE)
-changes <- merge(changes, estimates_series_1, all.x=TRUE)
+changes <- merge(estimates_series_2, estimates_series_1, all.x=TRUE)
 
 rm(list=ls(pattern = "^estimates_series"))
 
@@ -257,28 +249,16 @@ plot_inc <- function(df){
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
 
 
-  print(qplot(year, inc_series1, data=df, geom="line", colour=I("blue")) +
+  print(qplot(year, inc_series1, data=df, geom="line", colour=I("green")) +
         geom_ribbon(aes(year,
                         ymin=inc_lo_series1,
                         ymax=inc_hi_series1),
-                    fill=I("blue"), alpha=0.2) +
+                    fill=I("green"), alpha=0.2) +
 
-        geom_line(aes(year, inc_series2), colour=I("red")) +
+        geom_line(aes(year, inc_series2), colour=I("yellow")) +
         geom_ribbon(aes(year,
                         ymin=inc_lo_series2,
                         ymax=inc_hi_series2),
-                    fill=I("red"), alpha=0.2) +
-
-        geom_line(aes(year, inc_series3), colour=I("green")) +
-        geom_ribbon(aes(year,
-                        ymin=inc_lo_series3,
-                        ymax=inc_hi_series3),
-                    fill=I("green"), alpha=0.2) +
-
-        geom_line(aes(year, inc_series4), colour=I("yellow")) +
-        geom_ribbon(aes(year,
-                        ymin=inc_lo_series4,
-                        ymax=inc_hi_series4),
                     fill=I("yellow"), alpha=0.2) +
 
         # add notifications as a black line
@@ -371,7 +351,7 @@ plot_blocks_to_pdf(dr_changes_targets,
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 # Combine the estimates into one long table
-kids_changes <- rbind(estimates_014_series_1, estimates_014_series_2, estimates_014_series_3, estimates_014_series_4)
+kids_changes <- rbind(estimates_014_series_1, estimates_014_series_2)
 
 rm(list=ls(pattern = "^estimates_014_series"))
 
