@@ -1,6 +1,7 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Look at trends in number of notifications from PPM
-# Hazim Timimi, June 2018
+# Look at trends in provision of palliative care to patients whose MDR
+# treatment failed
+# Hazim Timimi, May 2020
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -19,8 +20,7 @@
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 
-file_name     <- paste0(outfolder, "ppm_graphs_", Sys.Date(), ".pdf")
-
+file_name     <- paste0(outfolder, "palliative_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -39,36 +39,44 @@ library(dplyr)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, pub_new_dx, priv_new_dx FROM dcf.latest_strategy
-                WHERE COALESCE(pub_new_dx, priv_new_dx) IS NOT NULL
-                UNION ALL
-                SELECT country, year, pub_new_dx, priv_new_dx FROM view_TME_master_strategy
-                WHERE year BETWEEN 2011 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy) AND
-  					    iso2 IN (SELECT iso2 FROM dcf.latest_strategy WHERE COALESCE(pub_new_dx, priv_new_dx) IS NOT NULL)
-				        ORDER BY country,year"
+sql <- "WITH palliative AS (
+SELECT iso2, year-2 AS year, mdrxdr_fail_morphine
+FROM	view_TME_master_strategy
+UNION ALL
+SELECT iso2, year-2 AS year, mdrxdr_fail_morphine
+FROM	dcf.latest_strategy
+),
+mxdr_fail AS (
+SELECT  iso2, country, year, ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) AS dr_fail
+FROM	view_TME_master_outcomes
+WHERE	year BETWEEN 2015 AND (SELECT MAX(year) - 1 FROM dcf.latest_mdr_xdr_outcomes)
+UNION ALL
+SELECT  iso2, country, year, ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) AS dr_fail
+FROM	dcf.latest_mdr_xdr_outcomes
+)
+
+SELECT	mxdr_fail.country, mxdr_fail.year, dr_fail,mdrxdr_fail_morphine
+FROM	mxdr_fail
+			LEFT OUTER JOIN palliative ON
+				mxdr_fail.iso2 = palliative.iso2 AND
+				mxdr_fail.year = palliative.year
+WHERE	mxdr_fail.iso2 IN (SELECT iso2 FROM dcf.latest_mdr_xdr_outcomes WHERE ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) > 0)
+ORDER BY country, year;"
 
 
 # Extract data from the database
 channel <- odbcDriverConnect(connection_string)
-data_to_plot <- sqlQuery(channel,sql)
+
+data_to_plot <- sqlQuery(channel,sql, stringsAsFactors = FALSE)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_strategy WHERE COALESCE(pub_new_dx, priv_new_dx) IS NOT NULL ORDER BY country")
+countries <- sqlQuery(channel,
+                      "SELECT country FROM dcf.latest_mdr_xdr_outcomes WHERE ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) > 0 ORDER BY country",
+                      stringsAsFactors = FALSE)
 
 close(channel)
 
 
-
-# Simple rounding function that returns a string rounded to the nearest integer and
-# uses a space as the thousands separator as per WHO standard.
-# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-
-rounder <- function(x) {
-
-    ifelse(is.na(x), NA,
-           formatC(round(x,0), big.mark=" ", format="d")
-           )
-}
 
 
 # Define graph layout ----
@@ -76,20 +84,20 @@ rounder <- function(x) {
 
 plot_faceted <- function(df){
 
-  # Blue line  = public-public notifications
-  # Green dots = private-public notifications
+  # Blue dots  = Patients failed second-line treatment
+  # Green dots = Number of patients who failed second line treatment who received oral morphine
 
 
-graphs <- qplot(year, pub_new_dx, data=df, geom="line", colour=I("blue")) +
-          geom_line(aes(year, priv_new_dx), colour=I("green")) +
+graphs <- qplot(year, dr_fail, data=df, geom="point", colour=I("blue")) +
+          geom_point(aes(year, mdrxdr_fail_morphine), colour=I("green")) +
 
           # Use space separators for the y axis
-          scale_y_continuous(name = "Public-public (blue) and private-public (green) notifications (number per year)",
-                             labels = rounder) +
+          scale_y_continuous(name = "Patients failed second-line treatment (blue) and who received oral morphine (green) (number)") +
 
-          scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+          scale_x_continuous(name="", breaks = c(2015, 2016, 2017)) +
 
           facet_wrap(~country, scales="free_y") +
+
 
           expand_limits(y=0) +
           theme_bw(base_size=8) +
@@ -111,4 +119,7 @@ source("plot_blocks_to_pdf.r")
 
 
 plot_blocks_to_pdf(data_to_plot, countries, file_name, plot_function = plot_faceted)
+
+
+
 

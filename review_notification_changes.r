@@ -4,14 +4,11 @@
 # Hazim Timimi, November 2015
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# clear the decks
-rm(list=ls())
 
 # Set up the running environment ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name_pcnt:     Name of the PDF output file for % changes
 # file_name_delta:    Name of the PDF output file for changes in absolute numers
 #
@@ -25,17 +22,14 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
-setwd(scriptsfolder)
-
-file_name_pcnt <- paste0("notif_change_pcnt_", Sys.Date(), ".pdf")
-file_name_delta <- paste0("notif_change_delta_", Sys.Date(), ".pdf")
-file_name_cnr <- paste0("notif_cnr_", Sys.Date(), ".pdf")
-
-start_year <- 2013
-minimum_notifs <- 1000
-
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+
+file_name_pcnt <- paste0(outfolder, "notif_change_pcnt_", Sys.Date(), ".pdf")
+file_name_delta <- paste0(outfolder, "notif_change_delta_", Sys.Date(), ".pdf")
+file_name_cnr <- paste0(outfolder, "notif_cnr_", Sys.Date(), ".pdf")
+
+start_year <- 2015
+minimum_notifs <- 1000
 
 
 # load packages ----
@@ -198,7 +192,6 @@ plot_faceted_cnr <- function(df){
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-setwd(outfolder)
 
 plot_blocks_to_pdf(notifs, countries, file_name_pcnt, plot_function = plot_faceted_pcnt)
 plot_blocks_to_pdf(notifs, countries, file_name_delta, plot_function = plot_faceted_delta)

@@ -5,14 +5,11 @@
 # Hazim Timimi, June 2019
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# clear the decks
-rm(list=ls())
 
 # Set up the running environment ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
 # The next two are set using set_environment.r
@@ -21,9 +18,6 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
-
-setwd(scriptsfolder)
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 
@@ -103,7 +97,7 @@ close(channel)
 # - - - - - - - - - - -
 
 countries <-  data_to_plot %>%
-              filter(year >= 2017 & !is.na(mf_ratio)) %>%
+              filter(year >= 2018 & !is.na(mf_ratio)) %>%
               arrange(country, year) %>%
               group_by(country) %>%
               mutate(mf_prev = lag(mf_ratio)) %>%
@@ -116,6 +110,9 @@ countries <-  data_to_plot %>%
 
 data_to_plot <- data_to_plot %>%
                 filter(country %in% countries$country)
+
+if(nrow(data_to_plot) == 0) stop("No countries with flipped mf ratio! Stopping here...")
+
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Plot the graphs to PDF -------
@@ -137,8 +134,6 @@ ggsave(filename=file_name,
        width=11,
        height=7)
 
-# clear the decks
-rm(list=ls())
 
 
 

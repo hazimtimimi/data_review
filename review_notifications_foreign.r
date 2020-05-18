@@ -3,14 +3,11 @@
 # Hazim Timimi, June 2017
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# clear the decks
-rm(list=ls())
 
 # Set up the running environment ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
 # The next two are set using set_environment.r
@@ -19,14 +16,11 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
-
-file_name     <- paste0("foreigner_graphs_", Sys.Date(), ".pdf")
-file_name_pcnt     <- paste0("foreigner_pcnt_graphs_", Sys.Date(), ".pdf")
-
-setwd(scriptsfolder)
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+
+file_name     <- paste0(outfolder, "foreigner_graphs_", Sys.Date(), ".pdf")
+file_name_pcnt     <- paste0(outfolder, "foreigner_pcnt_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -70,6 +64,16 @@ data_to_plot <- data_to_plot %>%
                 mutate( pcnt_foreign = ifelse(c_newinc > 0, notif_foreign * 100 / c_newinc, NA))
 
 
+# Simple rounding function that returns a string rounded to the nearest integer and
+# uses a space as the thousands separator as per WHO standard.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+rounder <- function(x) {
+
+    ifelse(is.na(x), NA,
+           formatC(round(x,0), big.mark=" ", format="d")
+           )
+}
 
 # Define graph layout ----
 # - - - - - - - - - - -
@@ -82,8 +86,15 @@ plot_faceted <- function(df){
 
 graphs <- qplot(year, c_newinc, data=df, geom="line", colour=I("blue")) +
           geom_point(aes(year, notif_foreign), colour=I("green")) +
+
+          # Use space separators for the y axis
+          scale_y_continuous(name = "New and relapse cases (blue) and cases among foreigners (green dots) (number)",
+                             labels = rounder) +
+
+          scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+
           facet_wrap(~country, scales="free_y") +
-          xlab("year") + ylab("cases") +
+
           expand_limits(y=0) +
           theme_bw(base_size=8) +
           theme(legend.position="bottom")
@@ -100,8 +111,14 @@ plot_faceted_pcnt <- function(df){
 
 graphs <- qplot(year, pcnt_foreign, data=df, geom="line", colour=I("blue")) +
           geom_point(aes(year, pcnt_foreign), colour=I("blue")) +
+
+          # Use space separators for the y axis
+          scale_y_continuous(name = "% of new and relapse cases that are in foreigners") +
+
+          scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+
           facet_wrap(~country, scales="free_y") +
-          xlab("year") + ylab("% foreign") +
+
           expand_limits(y=0) +
           theme_bw(base_size=8) +
           theme(legend.position="bottom")
@@ -116,14 +133,11 @@ graphs <- qplot(year, pcnt_foreign, data=df, geom="line", colour=I("blue")) +
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-setwd(outfolder)
 
 plot_blocks_to_pdf(data_to_plot, countries, file_name, plot_function = plot_faceted)
 
 plot_blocks_to_pdf(data_to_plot, countries, file_name_pcnt, plot_function = plot_faceted_pcnt)
 
-# clear the decks
-rm(list=ls())
 
 
 

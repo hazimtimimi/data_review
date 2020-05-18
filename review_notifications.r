@@ -4,14 +4,11 @@
 # Hazim Timimi, June 2015
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# clear the decks
-rm(list=ls())
 
 # Set up the running environment ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
 # The next two are set using set_environment.r
@@ -20,13 +17,10 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
-
-file_name     <- paste0("notifs_graphs_", Sys.Date(), ".pdf")
-
-setwd(scriptsfolder)
-
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+
+file_name     <- paste0(outfolder, "notifs_graphs_", Sys.Date(), ".pdf")
+
 
 
 # load packages ----
@@ -61,6 +55,16 @@ countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHER
 
 close(channel)
 
+# Simple rounding function that returns a string rounded to the nearest integer and
+# uses a space as the thousands separator as per WHO standard.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+rounder <- function(x) {
+
+    ifelse(is.na(x), NA,
+           formatC(round(x,0), big.mark=" ", format="d")
+           )
+}
 
 # Define graph layout ----
 # - - - - - - - - - - -
@@ -70,10 +74,17 @@ plot_faceted <- function(df){
   # Blue line  = New and relapse cases
   # Green line = All notified cases
 
-  graphs <- qplot(year, c_newinc, data=df, geom="line", colour=I("blue")) +
-            geom_line(aes(year, c_notified), colour=I("green")) +
+  graphs <- qplot(year, c_notified, data=df, geom="line", colour=I("green")) +
+            geom_line(aes(year, c_newinc), colour=I("blue")) +
+
+            # Use space separators for the y axis
+            scale_y_continuous(name = "All notified TB cases (green),new and relapse cases (blue) (number)",
+                               labels = rounder) +
+
+            scale_x_continuous(name="", breaks = c(2000, 2005, 2010, 2015, 2019)) +
+
             facet_wrap(~country, scales="free_y") +
-            xlab("year") + ylab("cases") +
+
             expand_limits(y=0) +
             theme_bw(base_size=8) +
             theme(legend.position="bottom")
@@ -92,14 +103,7 @@ plot_faceted <- function(df){
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-setwd(outfolder)
 
 plot_blocks_to_pdf(data_to_plot, countries, file_name)
-
-# clear the decks
-rm(list=ls())
-
-
-
 
 

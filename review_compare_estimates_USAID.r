@@ -11,7 +11,6 @@ rm(list=ls())
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name_*:        Names of the PDF output files
 #
 # The next two are set using set_environment.r

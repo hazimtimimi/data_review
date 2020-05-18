@@ -4,14 +4,10 @@
 # Hazim Timimi, June 2015
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-# clear the decks
-rm(list=ls())
-
 # Set up the running environment ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # This depends on the person, location, machine used etc.and populates the following:
 #
-# scriptsfolder:      Folder containing these scripts
 # file_name:          Name of the PDF output file
 #
 # The next two are set using set_environment.r
@@ -20,13 +16,11 @@ rm(list=ls())
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-scriptsfolder <- getSrcDirectory(function(x) {x})  # See http://stackoverflow.com/a/30306616
-
-file_name     <- paste0("TBHIV_ART_graphs_", Sys.Date(), ".pdf")
-
-setwd(scriptsfolder)
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+
+file_name     <- paste0(outfolder, "TBHIV_ART_graphs_", Sys.Date(), ".pdf")
+
 
 
 # load packages ----
@@ -52,9 +46,9 @@ sql <- "SELECT country, year, newrel_hivpos AS hivtest_pos, newrel_art AS hiv_ar
              SELECT country, year,
                     COALESCE(newrel_hivpos, hivtest_pos_f, hivtest_pos_p) AS hivtest_pos,
                     COALESCE(newrel_art, hiv_art_f, hiv_art_p) AS hiv_art,
-                    NULL AS hiv_tbrx_art
+                    hiv_tbtx_art AS hiv_tbrx_art
              FROM view_TME_master_notification
-             WHERE year BETWEEN 2006 AND (SELECT max(year - 1) from dcf.latest_notification) AND
+             WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification) AND
              iso2 IN (SELECT iso2 from dcf.latest_notification WHERE newrel_hivpos IS NOT NULL)
              ORDER BY country,year;"
 
@@ -68,6 +62,17 @@ countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHER
 
 close(channel)
 
+# Simple rounding function that returns a string rounded to the nearest integer and
+# uses a space as the thousands separator as per WHO standard.
+# - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
+rounder <- function(x) {
+
+    ifelse(is.na(x), NA,
+           formatC(round(x,0), big.mark=" ", format="d")
+           )
+}
+
 
 # Define graph layout ----
 # - - - - - - - - - - -
@@ -80,9 +85,17 @@ plot_faceted <- function(df){
 
   graphs <- qplot(year, hivtest_pos, data=df, geom="line", colour=I("red")) +
             geom_line(aes(year, hiv_art), colour=I("blue")) +
-            geom_point(aes(year, hiv_tbrx_art), colour=I("black")) +
+
+            geom_line(aes(year, hiv_tbrx_art), colour=I("black"), linetype = "dashed") +
+
+            # Use space separators for the y axis
+            scale_y_continuous(name = "TB/HIV cases (red), on ART: NTP reported (blue), on ART: UNAIDS (black dashed) (number)",
+                               labels = rounder) +
+
+            scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+
             facet_wrap(~country, scales="free_y") +
-            xlab("year") + ylab("cases") +
+
             expand_limits(y=0) +
             theme_bw(base_size=8) +
             theme(legend.position="bottom")
@@ -101,12 +114,7 @@ plot_faceted <- function(df){
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-setwd(outfolder)
-
 plot_blocks_to_pdf(data_to_plot, countries, file_name)
-
-# clear the decks
-rm(list=ls())
 
 
 
