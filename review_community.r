@@ -1,6 +1,6 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Look at trends in number of notifications among foreigners
-# Hazim Timimi, June 2017
+# Look at trends in reporting on community indicators
+# Hazim Timimi, May 2020
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
