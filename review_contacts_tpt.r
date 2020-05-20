@@ -40,12 +40,10 @@ library(dplyr)
 
 sql <- "SELECT	country, year, newinc_con_prevtx, newinc_con04_prevtx
 FROM	dcf.latest_strategy
-WHERE	COALESCE(newinc_con_prevtx, newinc_con04_prevtx) IS NOT NULL
 UNION ALL
 SELECT country, year, newinc_con_prevtx, newinc_con04_prevtx
 FROM view_TME_master_strategy
-WHERE year BETWEEN 2015 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy) AND
-iso2 IN (SELECT iso2 from dcf.latest_strategy WHERE COALESCE(newinc_con_prevtx, newinc_con04_prevtx) IS NOT NULL)
+WHERE year BETWEEN 2015 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy)
 ORDER BY country,year;"
 
 # Extract data from the database
@@ -53,7 +51,7 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_strategy WHERE COALESCE(newinc_con_prevtx, newinc_con04_prevtx) IS NOT NULL ORDER BY country")
+countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_strategy ORDER BY country")
 
 close(channel)
 
