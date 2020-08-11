@@ -117,6 +117,11 @@ expenditure_master <- sqlQuery(channel, "SELECT *
                           WHERE year = (SELECT MAX(year) FROM dcf.latest_expenditure_services)",
                        stringsAsFactors = FALSE)
 
+# And a one-off for 2020 data collection year
+covid_unhlm_master <- sqlQuery(channel, "SELECT *
+                          FROM view_TME_master_covid_unhlm
+                          WHERE year = 2020",
+                       stringsAsFactors = FALSE)
 
 close(channel)
 
@@ -178,6 +183,12 @@ to_csv <- function(df, filename) {
 notifs_diff <- compare_views(dcf_view = notifs_dcf, master_view = notifs_master)
 to_csv(notifs_diff, "notifs_diff")
 
+# Produce an alternative where the age/sex disaggregations comparison does notinclude calculated
+# combinations
+notifs_diff_noagesex <- notifs_diff %>%
+  filter(!(var_name %in% c('newrel_f014', 'newrel_f1524', 'newrel_f514', 'newrel_m014', 'newrel_m1524', 'newrel_m514')))
+to_csv(notifs_diff_noagesex, "notifs_diff_noagesex")
+
 
 # dr surveillance records are in the dcf notifications view!
 dr_surveillance_diff <- compare_views(dcf_view = notifs_dcf, master_view = dr_surveillance_master)
@@ -225,5 +236,7 @@ to_csv(expenditure_diff, "expenditure_diff")
 expenditure_diff <- expenditure_diff %>% filter(!(value_master == -1 & value_dcf == 0))
 to_csv(expenditure_diff, "expenditure_ignore_nonreporters_diff")
 
-
+# And for 2020
+covid_unhlm_diff <- compare_views(dcf_view = strategy_dcf, master_view = covid_unhlm_master)
+to_csv(covid_unhlm_diff, "covid_unhlm_diff")
 
