@@ -285,6 +285,12 @@ plot_blocks_to_pdf(changes_targets,
                    paste0(outfolder, file_name_inc),
                    plot_function = plot_inc)
 
+# Save underlying data to CSV
+changes_targets %>%
+  inner_join(country_list, by="country") %>%
+  write.csv(file = paste0(outfolder, file_name_inc, ".csv"),
+            row.names=FALSE,
+            na="")
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -345,6 +351,12 @@ plot_blocks_to_pdf(dr_changes_targets,
                    paste0(outfolder, file_name_inc_dr),
                    plot_function = plot_dr_inc)
 
+# Save underlying data to CSV
+dr_changes_targets %>%
+  inner_join(country_list, by="country") %>%
+  write.csv(file = paste0(outfolder, file_name_inc_dr, ".csv"),
+            row.names=FALSE,
+            na="")
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Now do the plots for incidence in children aged 0-14 -------
@@ -409,5 +421,12 @@ plot_blocks_to_pdf(kids_changes_targets,
                    country_list,
                    paste0(outfolder, file_name_inc014),
                    plot_function = plot_014_inc)
+
+# Save underlying data to CSV
+kids_changes_targets %>%
+  inner_join(country_list, by="country") %>%
+  write.csv(file = paste0(outfolder, file_name_inc014, ".csv"),
+            row.names=FALSE,
+            na="")
 
 
