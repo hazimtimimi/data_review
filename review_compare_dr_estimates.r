@@ -34,8 +34,8 @@ rm(list=ls())
 source("set_environment.r")  # particular to each person so this file is in the ignore list
 
 
-file_name_dr    <- paste0(g_whoregion, "dr_graphs_", Sys.Date(), ".pdf")
-
+file_name_dr     <- paste0(g_whoregion, "dr_graphs_", Sys.Date(), ".pdf")
+file_name_inc_dr <- paste0(g_whoregion, "incidence_dr_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -60,7 +60,8 @@ get_historical_estimates <- function(channel,version,limiting_date, start_year){
 
   sql <- paste0("SELECT country, year,
                e_rr_prop_new, e_rr_prop_new_lo, e_rr_prop_new_hi,
-               e_rr_prop_ret, e_rr_prop_ret_lo, e_rr_prop_ret_hi
+               e_rr_prop_ret, e_rr_prop_ret_lo, e_rr_prop_ret_hi,
+               e_inc_rr_num, e_inc_rr_num_lo, e_inc_rr_num_hi
                FROM	dr_estimates_rawvalues_at_date(CAST('", limiting_date, "' AS DATE), ", start_year, ")")
 
   # Extract data from the database
@@ -69,8 +70,8 @@ get_historical_estimates <- function(channel,version,limiting_date, start_year){
 
   # rename variables to include version using dplyr
   estimates <- estimates %>%
-               rename_at(vars(starts_with("e_rr_prop")),
-                         funs(paste0(.,"_" , version)))
+               rename_at(vars(starts_with("e_")),
+                         function(i){paste0(i,"_" , version)})
 
   return(estimates)
 }
@@ -103,27 +104,16 @@ dr_estimates <- estimates_series_1 %>%
 
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Define graph layout ----
-#
-# Plot 4 sets of graphs (incidence, TB/HIV incidence, mortality excl HIV, TB/HIV mortality)
-# Each graph shows three series for the same indicator, each from a separate global report.
-# Series will overlap, hence make them transparent -- I've used alpha=0.2
-#
-# Assumes the input dataframe is wide, with the three data series labelled series1, series2 and series3
-# and indicators called inc, prev and mort, with uncertainty intervals called lo and hi
-#
-# variable format is variable_series
-#
-# therefore inc_lo_series2 is the low bound incidence from series2
+# Define graph layouts ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 plot_dr <- function(df){
 
-  #plot incidence (faceted)
+  # plot proportions of new and previously treated TB that are RR (faceted)
 
-  # Blue bands  = series 1
-  # Red bands   = series 2
-  # Green bands = series 3
+  # Blue  = series 1
+  # Red   = series 2
+  # Green = series 3
   #
   # the circle (shape=16) is best estimate of RR-TB among new cases and
   # the diamond (shape=18) is best estimate of RR-TB among previously treated cases
@@ -186,6 +176,51 @@ plot_dr <- function(df){
           theme(legend.position="bottom"))
   }
 
+plot_inc_dr <- function(df){
+
+  # plot incidence of RR-TB (faceted)
+
+  # Blue  = series 1
+  # Red   = series 2
+  # Green = series 3
+  #
+
+  #note that inside a function the print() command is needed to paint to the canvass
+  #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
+
+
+  print(
+        ggplot(data = df) +
+
+          geom_pointrange(aes(x=year,
+                              y=e_inc_rr_num_series1,
+                              ymin=e_inc_rr_num_lo_series1,
+                              ymax=e_inc_rr_num_hi_series1),
+                          colour="blue",
+                          shape=16) +
+
+          geom_pointrange(aes(x=year-0.1,
+                              y=e_inc_rr_num_series2,
+                              ymin=e_inc_rr_num_lo_series2,
+                              ymax=e_inc_rr_num_hi_series2),
+                          colour="red",
+                          shape=16) +
+
+          geom_pointrange(aes(x=year,
+                              y=e_inc_rr_num_series3,
+                              ymin=e_inc_rr_num_lo_series3,
+                              ymax=e_inc_rr_num_hi_series3),
+                          colour="green",
+                          shape=16) +
+
+          facet_wrap(~country, scales="free_y") +
+          scale_x_continuous(breaks = c(series_1_startyear, series_2_startyear, series_3_startyear)) +
+          xlab("") +
+          ylab("Estimated RR-TB incidence (absolute number)") +
+          expand_limits(y=0) +
+          theme_bw(base_size=8) +
+          theme(legend.position="bottom"))
+  }
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 # Plot the graphs to PDF -------
@@ -197,12 +232,18 @@ source("plot_blocks_to_pdf.r")
 block_size <- ifelse(g_whoregion == "SEA", 8, 16)
 
 
+
 plot_blocks_to_pdf(dr_estimates,
                    countries,
                    paste0(outfolder, file_name_dr),
                    plot_function = plot_dr,
                    block_size)
 
+plot_blocks_to_pdf(dr_estimates,
+                   countries,
+                   paste0(outfolder, file_name_inc_dr),
+                   plot_function = plot_inc_dr,
+                   block_size)
 
 
 

@@ -29,10 +29,10 @@ rm(list=ls())
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 
 
-file_name_inc      <- paste0(g_whoregion, "inc_graphs_", Sys.Date(), ".pdf")
-file_name_inc_hiv  <- paste0(g_whoregion, "inc_hiv_graphs_", Sys.Date(), ".pdf")
-file_name_mort     <- paste0(g_whoregion, "mort_graphs_", Sys.Date(), ".pdf")
-file_name_mort_hiv <- paste0(g_whoregion, "mort_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_inc      <- paste0(g_whoregion, "incidence_graphs_", Sys.Date(), ".pdf")
+file_name_inc_hiv  <- paste0(g_whoregion, "inccidence_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_mort     <- paste0(g_whoregion, "mortality_graphs_", Sys.Date(), ".pdf")
+file_name_mort_hiv <- paste0(g_whoregion, "mortality_hiv_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----

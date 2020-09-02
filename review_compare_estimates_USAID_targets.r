@@ -205,6 +205,8 @@ country_list <- countries %>%
   mutate(iso2 = as.character(iso2)) %>%
   inner_join(iso2_list) %>%
   mutate(country = as.character(country)) %>%
+  # Sort by country name so that resulting charts are sorted by country name rather than iso2
+  arrange(country) %>%
   select(country)
 
 
