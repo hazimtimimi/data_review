@@ -16,9 +16,17 @@
 # connection_string:  ODBC connection string to the global TB database
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-source("set_environment.r")  #particular to each person so this file is in the ignore list
 
-file_name     <- paste0(outfolder, "ipt_graphs_", Sys.Date(), ".pdf")
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+
+
+source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
+
+file_name     <- paste0(outfolder, "hiv_tpt_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -30,14 +38,14 @@ library(ggplot2)
 # Get the data  ----
 #
 # I prefer to do this via SQL, but could be done of course with the pure views
-# and some R jiggery pokey
+# and some R jiggery pokery
 #
 # The query combines data from the master notification view with latest data
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, hiv_ipt, hiv_reg_new FROM dcf.latest_notification
-                WHERE hiv_ipt is not null
+sql <- "SELECT country, year, hiv_tpt_eligible_start AS hiv_ipt, hiv_tpt_eligible AS hiv_reg_new FROM dcf.latest_notification
+                WHERE hiv_tpt_eligible_start is not null
                 UNION ALL
                 SELECT country, year, hiv_ipt, hiv_reg_new FROM view_TME_master_notification
                 WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification) AND
@@ -50,7 +58,10 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE ISNULL(hiv_ipt,0) > 0 ORDER BY country")
+countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_TBHIV_for_aggregates",
+                                     "WHERE ISNULL(hiv_tpt_eligible_start,0) > 0",
+                                     region_filter,
+                                     "ORDER BY country"))
 
 close(channel)
 
@@ -80,10 +91,14 @@ graphs <- qplot(year, hiv_reg_new, data=df, geom="line", colour=I("green")) +
 
           scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country, scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
+            theme_gtbr_2021(base_size=6) +
+            # Add a gray line over the x-axis so that all graphs have a line at the bottom
+            annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf, colour = "#BCBCBC")
           theme(legend.position="bottom")
 
   # note that inside a function the print() command is needed to paint to the canvass

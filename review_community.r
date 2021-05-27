@@ -18,6 +18,15 @@
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+
+region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+
+
+
 
 file_name_bmu_ref_data     <- paste0(outfolder, "bmu_ref_data_graphs_", Sys.Date(), ".pdf")
 file_name_comm_ref_pcnt     <- paste0(outfolder, "community_ref_pcnt_graphs_", Sys.Date(), ".pdf")
@@ -95,8 +104,17 @@ data_ref_to_plot <- sqlQuery(channel,sql_ref)
 data_rxsupport_to_plot <- sqlQuery(channel,sql_rxsupport)
 
 # get list of countries
-countries_ref <- sqlQuery(channel, "SELECT country FROM dcf.latest_strategy WHERE ISNULL(bmu_ref_data,0) > 0 ORDER BY country")
-countries_rxsupport <- sqlQuery(channel, "SELECT country FROM dcf.latest_strategy WHERE ISNULL(bmu_rxsupport_data,0) > 0 ORDER BY country")
+countries_ref <- sqlQuery(channel,
+                          paste("SELECT country FROM dcf.latest_strategy",
+                                "WHERE ISNULL(bmu_ref_data,0) > 0",
+                                region_filter,
+                                "ORDER BY country"))
+
+countries_rxsupport <- sqlQuery(channel,
+                                paste("SELECT country FROM dcf.latest_strategy",
+                                      "WHERE ISNULL(bmu_rxsupport_data,0) > 0",
+                                      region_filter,
+                                      "ORDER BY country"))
 
 close(channel)
 
@@ -148,11 +166,14 @@ graphs <- qplot(year, bmu, data=df, geom="line", colour=I("blue")) +
 
           scale_x_continuous(name="", breaks = c(2015, 2017, 2019)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="none")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -176,11 +197,14 @@ graphs <- qplot(year, pcnt_bmu_ref_data, data=df, geom="line", colour=I("blue"))
 
           scale_x_continuous(name="", breaks = c(2015, 2017, 2019)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="none")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -205,11 +229,14 @@ graphs <- qplot(year, bmu, data=df, geom="line", colour=I("blue")) +
 
           scale_x_continuous(name="", breaks = c(2014, 2016, 2018)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="none")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -232,11 +259,14 @@ graphs <- qplot(year, pcnt_bmu_rxsupport_data, data=df, geom="line", colour=I("b
 
           scale_x_continuous(name="", breaks = c(2014, 2016, 2018)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="none")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -256,11 +286,14 @@ graphs <- qplot(year, tsr_community_rxsupport, data=df, geom="line", colour=I("b
 
           scale_x_continuous(name="", breaks = c(2014, 2016, 2018)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="none")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)

@@ -19,6 +19,13 @@
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+
+region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
+                              WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
 file_name     <- paste0(outfolder, "palliative_graphs_", Sys.Date(), ".pdf")
 
@@ -71,7 +78,10 @@ data_to_plot <- sqlQuery(channel,sql, stringsAsFactors = FALSE)
 
 # get list of countries
 countries <- sqlQuery(channel,
-                      "SELECT country FROM dcf.latest_mdr_xdr_outcomes WHERE ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) > 0 ORDER BY country",
+                      paste("SELECT country FROM dcf.latest_mdr_xdr_outcomes",
+                            "WHERE ISNULL(mdr_fail,0) + ISNULL(xdr_fail,0) > 0",
+                            region_filter,
+                            "ORDER BY country"),
                       stringsAsFactors = FALSE)
 
 close(channel)
@@ -94,14 +104,16 @@ graphs <- qplot(year, dr_fail, data=df, geom="point", colour=I("blue")) +
           # Use space separators for the y axis
           scale_y_continuous(name = "Patients failed second-line treatment (blue) and who received oral morphine (green) (number)") +
 
-          scale_x_continuous(name="", breaks = c(2015, 2016, 2017)) +
+          scale_x_continuous(name="", breaks = c(2015, 2017, 2020)) +
 
-          facet_wrap(~country, scales="free_y") +
-
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 23)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="bottom")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)

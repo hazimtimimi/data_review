@@ -1,7 +1,6 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Look at notification trends using data from previous years and
-# the latest data reported to us
-# Hazim Timimi, June 2015
+# Compare provisional and final notifications
+# Hazim Timimi, May 2021
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -26,14 +25,18 @@ source("set_plot_themes.r")
 region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
+# region_filter <- ""
 
-file_name     <- paste0(outfolder, "notifs_graphs_", Sys.Date(), ".pdf")
+report_year <- 2021
+
+file_name     <- paste0(outfolder, "prov_notifs_graphs_", Sys.Date(), ".pdf")
 
 
 
 # load packages ----
 library(RODBC)
 library(ggplot2)
+library(dplyr)
 
 
 
@@ -47,25 +50,46 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, c_newinc, c_notified FROM dcf.latest_notification
-                UNION ALL
-                SELECT country, year, c_newinc, c_notified FROM view_TME_master_notification
-                WHERE year BETWEEN 2000 AND (SELECT max(year - 1) from dcf.latest_notification)
-				        ORDER BY country, year"
+sql <- paste("SELECT country, year, c_newinc FROM dcf.latest_notification
+              UNION ALL
+              SELECT country, year, c_newinc FROM view_TME_master_notification
+              WHERE year BETWEEN",
+              report_year-5,
+              "AND",
+              report_year-1,
+              "ORDER BY country, year")
 
 
 # Extract data from the database
 channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
-# get list of countries
-countries <- sqlQuery(channel,
-                      paste("SELECT country FROM dcf.latest_notification",
-                            "WHERE c_notified IS NOT NULL",
-                            region_filter,
-                            "ORDER BY country"))
+# get provisional notifications for countries that have reported for the whole year
+prov_notifs <- sqlQuery(channel,
+                        paste("SELECT country, year,
+                              CASE report_frequency
+                                WHEN 70 THEN
+                              m_01 + m_02 + m_03 + m_04 + m_05 + m_06 +
+                              m_07 + m_08 + m_09 + m_10 + m_11 + m_12
+                                ELSE q_1 + q_2 + q_3 + q_4
+                              END AS c_newinc_prov
+                              FROM dcf.latest_provisional_c_newinc",
+                              "WHERE COALESCE(m_12, q_4) IS NOT NULL",
+                              region_filter,
+                              "AND year = ",
+                              report_year-1,
+                              "ORDER BY country"))
 
 close(channel)
+
+
+# Merge the two datasets
+data_to_plot <- data_to_plot %>%
+  left_join(prov_notifs, by = c("country", "year"))
+
+# List of countries to plot
+countries <- select(prov_notifs, country)
+
 
 # Simple rounding function that returns a string rounded to the nearest integer and
 # uses a space as the thousands separator as per WHO standard.
@@ -84,21 +108,22 @@ rounder <- function(x) {
 plot_faceted <- function(df){
 
   # Blue line  = New and relapse cases
-  # Green line = All notified cases
+  # Green dot  = provisional notifications
 
-  graphs <- qplot(year, c_notified, data=df, geom="line", colour=I("green")) +
-            geom_line(aes(year, c_newinc), colour=I("blue")) +
+  graphs <- qplot(year, c_newinc, data=df, geom="line", colour=I("blue")) +
+
+            geom_point(aes(year, c_newinc_prov), colour=I("green"), size=2 ) +
 
             # Use space separators for the y axis
-            scale_y_continuous(name = "All notified TB cases (green),new and relapse cases (blue) (number)",
+            scale_y_continuous(name = "New and relapse annual cases (blue) and provisional monthly/quarterly (green) (number)",
                                labels = rounder) +
 
-            scale_x_continuous(name="", breaks = c(2000, 2005, 2010, 2015, 2020)) +
+            scale_x_continuous(name="", breaks = c(2016, 2018, 2020)) +
 
             facet_wrap(~country,
                        scales="free_y",
                        # Use the labeller function to make sure long country names are wrapped in panel headers
-                       labeller = label_wrap_gen(width = 24)) +
+                       labeller = label_wrap_gen(width = 22)) +
 
             expand_limits(y=0) +
 

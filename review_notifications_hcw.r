@@ -18,6 +18,13 @@
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+
+region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
+                              WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
 file_name     <- paste0(outfolder, "hcw_graphs_", Sys.Date(), ".pdf")
 file_name_rate     <- paste0(outfolder, "hcw_rate_graphs_", Sys.Date(), ".pdf")
@@ -74,7 +81,10 @@ data_to_plot <- sqlQuery(channel,sql, stringsAsFactors = FALSE)
 notif_rates <- sqlQuery(channel,sql_notif_rate, stringsAsFactors = FALSE)
 # get list of countries
 countries <- sqlQuery(channel,
-                      "SELECT country FROM dcf.latest_strategy WHERE COALESCE(hcw_tb_infected, hcw_tot) IS NOT NULL ORDER BY country",
+                      paste("SELECT country FROM dcf.latest_strategy",
+                            "WHERE COALESCE(hcw_tb_infected, hcw_tot) IS NOT NULL",
+                            region_filter,
+                            "ORDER BY country"),
                       stringsAsFactors = FALSE)
 
 close(channel)
@@ -115,14 +125,16 @@ graphs <- qplot(year, hcw_tot, data=df, geom="point", colour=I("blue")) +
           scale_y_continuous(name = "Workers at healthcare facilities (blue) and TB cases among  healthcare workers (green) (number per year)",
                              labels = rounder) +
 
-          scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+          scale_x_continuous(name="", breaks = c(2010, 2015, 2020)) +
 
-          facet_wrap(~country, scales="free_y") +
-
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 23)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="bottom")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
@@ -144,13 +156,17 @@ graphs <- qplot(year, hcw_rate, data=df, geom="line", colour=I("blue")) +
           # Use space separators for the y axis
           scale_y_continuous(name = "TB notification rate per 100 000 health care workers (blue) and population (green)") +
 
-          scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+          scale_x_continuous(name="", breaks = c(2010, 2015, 2020)) +
 
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 23)) +
 
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="bottom")
+
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
+
   print(graphs)
 
 }

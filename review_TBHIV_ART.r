@@ -17,7 +17,13 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+
+
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
 
 file_name     <- paste0(outfolder, "TBHIV_ART_graphs_", Sys.Date(), ".pdf")
 
@@ -58,7 +64,10 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE newrel_hivpos IS NOT NULL ORDER BY country;")
+countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_TBHIV_for_aggregates",
+                                     "WHERE newrel_hivpos IS NOT NULL",
+                                     region_filter,
+                                     "ORDER BY country;"))
 
 close(channel)
 
@@ -94,10 +103,14 @@ plot_faceted <- function(df){
 
             scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
 
-            facet_wrap(~country, scales="free_y") +
+            facet_wrap(~country, scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 25)) +
 
             expand_limits(y=0) +
-            theme_bw(base_size=8) +
+            theme_gtbr_2021(base_size=6) +
+            # Add a gray line over the x-axis so that all graphs have a line at the bottom
+            annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf, colour = "#BCBCBC")
             theme(legend.position="bottom")
 
   # note that inside a function the print() command is needed to paint to the canvass

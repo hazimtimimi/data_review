@@ -20,6 +20,8 @@
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
 
 file_name     <- paste0(outfolder, "mf_graphs_", Sys.Date(), ".pdf")
 
@@ -121,11 +123,13 @@ if(nrow(data_to_plot) == 0) stop("No countries with flipped mf ratio! Stopping h
 graphs <- data_to_plot %>%
           ggplot(aes(x=year, y=mf_ratio, ymin=0)) +
           geom_line(colour=I("blue")) +
-          facet_wrap(~country, scales="free_y") +
+          facet_wrap(~country,
+                     scales="free_y",
+                     # Use the labeller function to make sure long country names are wrapped in panel headers
+                     labeller = label_wrap_gen(width = 24)) +
           xlab("year") + ylab("mf ratio") +
           expand_limits(y=0) +
-          theme_bw(base_size=8) +
-          theme(legend.position="bottom")
+          theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
 
 

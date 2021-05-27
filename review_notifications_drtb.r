@@ -18,6 +18,14 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
+source("set_plot_themes.r")
+
+# Define list of regions in SQL format if we don't want to plot all countries
+# (If not keep it as an empty string)
+region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
+                              WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
+
+
 
 file_name     <- paste0(outfolder, "notifs_drtb_graphs_", Sys.Date(), ".pdf")
 
@@ -39,16 +47,16 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, conf_rrmdr, conf_mdr, conf_rrmdr_tx FROM dcf.latest_notification
+sql <- "SELECT country, year, conf_rr_nfqr AS conf_rrmdr, conf_rr_nfqr_tx AS conf_rrmdr_tx FROM dcf.latest_notification
                 UNION ALL
-                SELECT country, year, conf_rrmdr, conf_mdr,
+                SELECT country, year, conf_rrmdr,
 
                 /* next statement is possible because variables are mutually exclusive -- switch happened in 2015 dcyear */
                 CASE WHEN COALESCE(conf_mdr_tx, conf_rrmdr_tx) is null THEN NULL
                      ELSE ISNULL(conf_mdr_tx,0) + ISNULL(conf_rrmdr_tx,0)
                 END AS conf_rrmdr_tx
                 FROM view_TME_master_notification
-                WHERE year BETWEEN 2000 AND (SELECT max(year - 1) from dcf.latest_notification)
+                WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification)
 				        ORDER BY country,year"
 
 # Extract data from the database
@@ -56,7 +64,11 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, "SELECT country FROM dcf.latest_notification WHERE COALESCE(conf_rrmdr, conf_mdr, conf_rrmdr_tx) IS NOT NULL ORDER BY country")
+countries <- sqlQuery(channel,
+                      paste("SELECT country FROM dcf.latest_notification",
+                            "WHERE COALESCE(conf_rr_nfqr, conf_rr_nfqr_tx) IS NOT NULL",
+                            region_filter,
+                            "ORDER BY country"))
 
 close(channel)
 
@@ -81,20 +93,22 @@ plot_faceted <- function(df){
   # Grey line = RR-TB cases started on treatment
 
   graphs <- qplot(year, conf_rrmdr, data=df, geom="line", colour=I("blue")) +
-            geom_line(aes(year, conf_mdr), colour=I("green"), alpha=0.5) +
-            geom_line(aes(year, conf_rrmdr_tx), colour=I("grey"), alpha=0.5, size = 1.2) +
+            geom_line(aes(year, conf_rrmdr_tx), colour=I("green"), alpha=0.5, size = 1.2) +
 
             # Use space separators for the y axis
-            scale_y_continuous(name = "All RR-TB cases (blue), MDR-TB cases (green), started on treatment (grey) (number)",
+            scale_y_continuous(name = "All RR-TB cases (blue), RR-TB cases started on treatment (green) (number)",
                                labels = rounder) +
 
-            scale_x_continuous(name="", breaks = c(2000, 2005, 2010, 2015, 2019)) +
+            scale_x_continuous(name="", breaks = c(2010, 2015, 2020)) +
 
-            facet_wrap(~country, scales="free_y") +
+            facet_wrap(~country,
+                       scales="free_y",
+                       # Use the labeller function to make sure long country names are wrapped in panel headers
+                       labeller = label_wrap_gen(width = 23)) +
 
             expand_limits(y=0) +
-            theme_bw(base_size=8) +
-            theme(legend.position="bottom")
+
+            theme_gtbr_2021(base_size=8, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
