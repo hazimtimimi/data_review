@@ -82,6 +82,12 @@ notifs_master <- sqlQuery(channel,
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_notification)"),
                        stringsAsFactors = FALSE)
 
+notifs_hiv_tpt_cmplt_master <- sqlQuery(channel, "SELECT country, iso2, year,
+                                      hiv_all_tpt_started, hiv_all_tpt_completed
+                            FROM view_TME_master_notification
+                            WHERE year = (SELECT MAX(year)-1 FROM dcf.latest_strategy)",
+                            stringsAsFactors = FALSE)
+
 # dr surveillance records are in the dcf notifications view!
 dr_surveillance_master <- sqlQuery(channel,
                           paste("SELECT *
@@ -107,6 +113,12 @@ strategy_master <- sqlQuery(channel, "SELECT *
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_strategy)",
                        stringsAsFactors = FALSE)
 
+strategy_tpt_cmplt_master <- sqlQuery(channel, "SELECT country, iso2, year,
+                                      newinc_con_prevtx, newinc_con_prevtx_cmplt
+                            FROM view_TME_master_strategy
+                            WHERE year = (SELECT MAX(year)-1 FROM dcf.latest_strategy)",
+                            stringsAsFactors = FALSE)
+
 budget_master <- sqlQuery(channel, "SELECT *
                           FROM view_TME_master_budget_expenditure
                           WHERE year = (SELECT MAX(year) FROM dcf.latest_budget)",
@@ -117,10 +129,10 @@ expenditure_master <- sqlQuery(channel, "SELECT *
                           WHERE year = (SELECT MAX(year) FROM dcf.latest_expenditure_services)",
                        stringsAsFactors = FALSE)
 
-# And a one-off for 2020 data collection year
+# And a one-off for 2021 data collection year
 covid_unhlm_master <- sqlQuery(channel, "SELECT *
                           FROM view_TME_master_covid_unhlm
-                          WHERE year = 2020",
+                          WHERE year = 2021",
                        stringsAsFactors = FALSE)
 
 close(channel)
@@ -180,20 +192,56 @@ to_csv <- function(df, filename) {
 # Now do the comparisons, and write results to CSV   ----
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
+# Notifications
+# - - - - - - - -
+
+# Exclude some of the auto-calculated age/sex variables as these are not auto-calculated in the DCF view
+notifs_dcf <- notifs_dcf %>%
+  select(-newrel_f514, -newrel_f014, -newrel_f1524, -newrel_m514, -newrel_m014, -newrel_m1524)
+
+notifs_master <- notifs_master %>%
+  select(-newrel_f514, -newrel_f014, -newrel_f1524, -newrel_m514, -newrel_m014, -newrel_m1524)
+
+
+# Move the HIV TPT completion variables from the DCF into a separate data frame
+notifs_hiv_tpt_cmplt_dcf <- notifs_dcf %>%
+  select(country, iso2, year,
+         hiv_all_tpt_started,
+         hiv_all_tpt_completed) %>%
+  mutate(year = year - 1) %>%
+  # remove empty rows
+  filter(!is.na(hiv_all_tpt_started) | !is.na(hiv_all_tpt_completed))
+
+notifs_dcf <- notifs_dcf %>%
+  select(-hiv_all_tpt_started, -hiv_all_tpt_completed)
+
+notifs_master <- notifs_master %>%
+  select(-hiv_all_tpt_started, -hiv_all_tpt_completed)
+
+
 notifs_diff <- compare_views(dcf_view = notifs_dcf, master_view = notifs_master)
 to_csv(notifs_diff, "notifs_diff")
 
-# Produce an alternative where the age/sex disaggregations comparison does notinclude calculated
-# combinations
-notifs_diff_noagesex <- notifs_diff %>%
-  filter(!(var_name %in% c('newrel_f014', 'newrel_f1524', 'newrel_f514', 'newrel_m014', 'newrel_m1524', 'newrel_m514')))
-to_csv(notifs_diff_noagesex, "notifs_diff_noagesex")
+notifs_hiv_tpt_cmplt_diff <- compare_views(dcf_view = notifs_hiv_tpt_cmplt_dcf, master_view = notifs_hiv_tpt_cmplt_master)
+to_csv(notifs_hiv_tpt_cmplt_diff, "notifs_hiv_tpt_cmplt_diff")
 
 
-# dr surveillance records are in the dcf notifications view!
+
+
+# DR surveillance
+# - - - - - - - -
+
+
+# latest dr surveillance records are in the dcf notifications view!
 dr_surveillance_diff <- compare_views(dcf_view = notifs_dcf, master_view = dr_surveillance_master)
 to_csv(dr_surveillance_diff, "dr_surveillance_diff")
 
+
+
+
+
+# Outcomes
+# - - - - - - - -
 
 # treatment success rates are not rounded in the outcomes dcf views, so round them now to match
 # properly with master views
@@ -202,41 +250,83 @@ outcomes_dcf$c_new_tsr <- round(outcomes_dcf$c_new_tsr)
 outcomes_dcf$c_ret_tsr <- round(outcomes_dcf$c_ret_tsr)
 outcomes_dcf$c_tbhiv_tsr <- round(outcomes_dcf$c_tbhiv_tsr)
 
-outcomes_diff <- compare_views(dcf_view = outcomes_dcf, master_view = outcomes_master)
-to_csv(outcomes_diff, "outcomes_diff")
-
-
-
 mdr_xdr_outcomes_dcf$c_mdr_tsr <- round(mdr_xdr_outcomes_dcf$c_mdr_tsr)
 mdr_xdr_outcomes_dcf$c_xdr_tsr <- round(mdr_xdr_outcomes_dcf$c_xdr_tsr)
+
+
+# Don't bother with the c_*_neval variables in the outcome tables as they are auto-calculated in master
+
+outcomes_dcf <- select(outcomes_dcf, -contains("_neval"))
+outcomes_master <- select(outcomes_master, -contains("_neval"))
+
+mdr_xdr_outcomes_dcf <- select(mdr_xdr_outcomes_dcf, -contains("_neval"))
+mdr_xdr_outcomes_master <- select(mdr_xdr_outcomes_master, -contains("_neval"))
+
+
+
+outcomes_diff <- compare_views(dcf_view = outcomes_dcf, master_view = outcomes_master)
+to_csv(outcomes_diff, "outcomes_diff")
 
 mdr_xdr_outcomes_diff <- compare_views(dcf_view = mdr_xdr_outcomes_dcf, master_view = mdr_xdr_outcomes_master)
 to_csv(mdr_xdr_outcomes_diff, "mdr_xdr_outcomes_diff")
 
 
 
+# Strategy and TPT completion
+# - - - - - - - - - - - - - -
+
+
+# Move the TPT completion variables for ym2 to a separate DCF dataframe
+strategy_tpt_cmplt_dcf <- strategy_dcf %>%
+  select(country, iso2, year,
+         newinc_con_prevtx = newinc_con_prevtx_ym2,
+         newinc_con_prevtx_cmplt) %>%
+  mutate(year = year - 1) %>%
+  # remove empty rows
+  filter(!is.na(newinc_con_prevtx) | !is.na(newinc_con_prevtx_cmplt))
+
+
+strategy_dcf <- strategy_dcf %>%
+  select(-prevtx_cmplt_data_available, -newinc_con_prevtx_ym2, newinc_con_prevtx_cmplt)
+
+strategy_master <- strategy_master %>%
+  select(-newinc_con_prevtx_cmplt)
+
+
+
 strategy_diff <- compare_views(dcf_view = strategy_dcf, master_view = strategy_master)
 to_csv(strategy_diff, "strategy_diff")
 
+strategy_tpt_cmplt_diff <- compare_views(dcf_view = strategy_tpt_cmplt_dcf, master_view = strategy_tpt_cmplt_master)
+to_csv(strategy_tpt_cmplt_diff, "strategy_tpt_cmplt_diff")
+
+
+
+# Finance
+# - - - - - - - -
 
 
 budget_diff <- compare_views(dcf_view = budget_dcf, master_view = budget_master)
-to_csv(budget_diff, "budget_diff")
-
-
 # remove empty rows (master = -1 AND dcf = 0)
 budget_diff <- budget_diff %>% filter(!(value_master == -1 & value_dcf == 0))
-to_csv(budget_diff, "budget_ignore_nonreporters_diff")
-
+to_csv(budget_diff, "budget_diff")
 
 expenditure_diff <- compare_views(dcf_view = expenditure_dcf, master_view = expenditure_master)
-to_csv(expenditure_diff, "expenditure_diff")
-
 # remove empty rows (master = -1 AND dcf = 0)
 expenditure_diff <- expenditure_diff %>% filter(!(value_master == -1 & value_dcf == 0))
-to_csv(expenditure_diff, "expenditure_ignore_nonreporters_diff")
+to_csv(expenditure_diff, "expenditure_diff")
 
-# And for 2020
-covid_unhlm_diff <- compare_views(dcf_view = strategy_dcf, master_view = covid_unhlm_master)
+
+
+# MAF
+# - - - - - - - -
+
+
+# And for 2021
+covid_unhlm_dcf <- strategy_dcf %>%
+  select(country, iso2, year, annual_report_published, ms_review, ms_review_civil_soc) %>%
+  mutate(year = year + 1)
+
+covid_unhlm_diff <- compare_views(dcf_view = covid_unhlm_dcf, master_view = covid_unhlm_master)
 to_csv(covid_unhlm_diff, "covid_unhlm_diff")
 
