@@ -2,6 +2,7 @@
 # Look at trends in male:female notification ratio
 # using data from previous years and
 # the latest data reported to us
+# to spot countries where the ratio has flipped either side of 1
 # Hazim Timimi, June 2019
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 

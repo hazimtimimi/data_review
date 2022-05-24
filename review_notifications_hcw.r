@@ -23,8 +23,11 @@ source("set_plot_themes.r")
 # Define list of regions in SQL format if we don't want to plot all countries
 # (If not keep it as an empty string)
 
+# region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
+#                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
+
 region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
-                              WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
+                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
 file_name     <- paste0(outfolder, "hcw_graphs_", Sys.Date(), ".pdf")
 file_name_rate     <- paste0(outfolder, "hcw_rate_graphs_", Sys.Date(), ".pdf")
@@ -119,7 +122,7 @@ plot_faceted <- function(df){
 
 
 graphs <- qplot(year, hcw_tot, data=df, geom="point", colour=I("blue")) +
-          geom_point(aes(year, hcw_tb_infected), colour=I("green")) +
+          geom_point(aes(year, hcw_tb_infected), colour=I("green"), size = 1) +
 
           # Use space separators for the y axis
           scale_y_continuous(name = "Workers at healthcare facilities (blue) and TB cases among  healthcare workers (green) (number per year)",

@@ -19,8 +19,9 @@
 
 # Define list of regions in SQL format if we don't want to plot all countries
 # (If not keep it as an empty string)
-region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+# region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
+region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 source("set_plot_themes.r")
@@ -44,8 +45,8 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, hiv_tpt_eligible_start AS hiv_ipt, hiv_tpt_eligible AS hiv_reg_new FROM dcf.latest_notification
-                WHERE hiv_tpt_eligible_start is not null
+sql <- "SELECT country, year, hiv_new_tpt AS hiv_ipt, hiv_new AS hiv_reg_new FROM dcf.latest_notification
+                WHERE hiv_new_tpt is not null
                 UNION ALL
                 SELECT country, year, hiv_ipt, hiv_reg_new FROM view_TME_master_notification
                 WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification) AND
@@ -59,7 +60,7 @@ data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
 countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_TBHIV_for_aggregates",
-                                     "WHERE ISNULL(hiv_tpt_eligible_start,0) > 0",
+                                     "WHERE ISNULL(hiv_new_tpt,0) > 0",
                                      region_filter,
                                      "ORDER BY country"))
 
@@ -115,6 +116,6 @@ graphs <- qplot(year, hiv_reg_new, data=df, geom="line", colour=I("green")) +
 # Get Function to plot multiple graphs to multi-page PDF
 source("plot_blocks_to_pdf.r")
 
-plot_blocks_to_pdf(data_to_plot, countries, file_name)
+plot_blocks_to_pdf(data_to_plot, countries, file_name, block_size = 12)
 
 

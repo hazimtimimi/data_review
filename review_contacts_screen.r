@@ -1,6 +1,6 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-# Look at trends in number of contacts provided with TB preventive therapy
-# Hazim Timimi, May 2020
+# Look at trends in number of contacts screened for TB preventive
+# Hazim Timimi, May 2022
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
@@ -25,7 +25,7 @@ region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 source("set_plot_themes.r")
 
-file_name     <- paste0(outfolder, "contacts_tpt_graphs_", Sys.Date(), ".pdf")
+file_name     <- paste0(outfolder, "contacts_screened_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -44,25 +44,12 @@ library(dplyr)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "WITH completion AS
-(
-SELECT	iso2, year - 1 AS year, newinc_con_prevtx_cmplt
+sql <- "SELECT	country, year, newinc_con, newinc_con_screen
 FROM	dcf.latest_strategy
 UNION ALL
-SELECT iso2, year, newinc_con_prevtx_cmplt
+SELECT country, year, newinc_con, newinc_con_screen
 FROM view_TME_master_strategy
-WHERE year BETWEEN 2019 AND (SELECT MAX(year - 2) FROM dcf.latest_strategy)
-)
-
-SELECT	country, year, newinc_con_prevtx, newinc_con04_prevtx, NULL AS newinc_con_prevtx_cmplt
-FROM	dcf.latest_strategy
-UNION ALL
-SELECT country, view_TME_master_strategy.year, newinc_con_prevtx, newinc_con04_prevtx, completion.newinc_con_prevtx_cmplt
-FROM view_TME_master_strategy
-	LEFT OUTER JOIN completion ON
-		view_TME_master_strategy.iso2 = completion.iso2 AND
-		view_TME_master_strategy.year = completion.year
-WHERE view_TME_master_strategy.year BETWEEN 2015 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy)
+WHERE year BETWEEN 2019 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy)
 ORDER BY country,year;"
 
 # Extract data from the database
@@ -71,7 +58,7 @@ data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
 countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_strategy",
-                                     "WHERE COALESCE(newinc_con_prevtx, newinc_con04_prevtx) IS NOT NULL",
+                                     "WHERE COALESCE(newinc_con, newinc_con_screen) IS NOT NULL",
                                      region_filter,
                                      "ORDER BY country"))
 
@@ -98,31 +85,28 @@ plot_faceted <- function(df){
   # Green dots = Contacts aged 0-4 started on TPT
 
 
-graphs <- qplot(year, newinc_con_prevtx, data=df, geom="point", colour=I("blue")) +
-          geom_line(aes(year, newinc_con_prevtx), colour=I("blue"), size = 1.25) +
+  graphs <- qplot(year, newinc_con, data=df, geom="point", colour=I("blue")) +
+    geom_line(aes(year, newinc_con), colour=I("blue"), size = 1.25) +
 
-          geom_line(aes(year, newinc_con04_prevtx), colour=I("green")) +
-          geom_point(aes(year, newinc_con04_prevtx), colour=I("green"), size = 1) +
+    geom_line(aes(year, newinc_con_screen), colour=I("red")) +
+    geom_point(aes(year, newinc_con_screen), colour=I("red"), size = 1) +
 
+    # Use space separators for the y axis
+    scale_y_continuous(name = "Contacts (blue) and contacts screened (red)  (number)",
+                       labels = rounder) +
 
-  geom_line(aes(year, newinc_con_prevtx_cmplt), colour=I("red")) +
-  geom_point(aes(year, newinc_con_prevtx_cmplt), colour=I("red"), size = 1) +
+    scale_x_continuous(name="", breaks = c(2019, 2021)) +
 
-          # Use space separators for the y axis
-          scale_y_continuous(name = "Contacts started on TPT (blue) [aged 0-4 (green)] and completing TPT (red)  (number)",
-                             labels = rounder) +
+    facet_wrap(~country, scales="free_y",
+               # Use the labeller function to make sure long country names are wrapped in panel headers
+               labeller = label_wrap_gen(width = 25)) +
 
-          scale_x_continuous(name="", breaks = c(2015, 2018, 2021)) +
+    expand_limits(y=0) +
+    theme_gtbr_2021(base_size=6) +
+    # Add a gray line over the x-axis so that all graphs have a line at the bottom
+    annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf, colour = "#BCBCBC")
 
-          facet_wrap(~country, scales="free_y",
-                     # Use the labeller function to make sure long country names are wrapped in panel headers
-                     labeller = label_wrap_gen(width = 25)) +
-
-          expand_limits(y=0) +
-          theme_gtbr_2021(base_size=6) +
-          # Add a gray line over the x-axis so that all graphs have a line at the bottom
-          annotate("segment", x=-Inf, xend=Inf, y=-Inf, yend=-Inf, colour = "#BCBCBC")
-          theme(legend.position="none")
+  theme(legend.position="none")
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
