@@ -20,7 +20,7 @@
 # Define list of regions in SQL format if we don't want to plot all countries
 # region_filter <- "WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
-region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+region_filter <- ""
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
 source("set_plot_themes.r")

@@ -26,8 +26,7 @@ source("set_plot_themes.r")
 # region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
 #                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
-region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
-                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
+region_filter <- ""
 
 file_name     <- paste0(outfolder, "hcw_graphs_", Sys.Date(), ".pdf")
 file_name_rate     <- paste0(outfolder, "hcw_rate_graphs_", Sys.Date(), ".pdf")

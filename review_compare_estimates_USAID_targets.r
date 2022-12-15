@@ -20,9 +20,9 @@
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 
-file_name_inc     <- paste0("inc_graphs_", Sys.Date(), ".pdf")
-file_name_inc014  <- paste0("inc014_graphs_", Sys.Date(), ".pdf")
-file_name_inc_dr  <- paste0("inc_dr_graphs_", Sys.Date(), ".pdf")
+file_name_inc     <- paste0("USAID_inc_graphs_", Sys.Date(), ".pdf")
+file_name_inc014  <- paste0("USAID_inc014_graphs_", Sys.Date(), ".pdf")
+file_name_inc_dr  <- paste0("USAID_inc_dr_graphs_", Sys.Date(), ".pdf")
 
 
 source("set_environment.r")  #particular to each person so this file is in the ignore list
@@ -58,9 +58,12 @@ targets <- targets %>%
   pivot_longer(cols = starts_with("20"),
                names_to = "year",
                #convert year field to integers
-               names_ptypes = list(year = integer()),
+               #names_ptypes = list(year = integer()),
                values_to = "target",
-               values_drop_na = TRUE)
+               values_drop_na = TRUE) %>%
+
+  # convert year to integer -- the command from last year [names_ptypes = list(year = integer())] not working now for some reason
+  mutate(year = as.integer(year))
 
 
 
@@ -71,7 +74,7 @@ iso2_list <- targets %>% distinct(iso2)
 # Get the estimates  ----
 #
 # I prefer to do this via SQL, but could be done of course with the pure views
-# and some R jiggery pokey
+# and some R jiggery pokery
 #
 # Extract historical estimates for a given report/date
 # and rename them using the pattern variablename_version
@@ -155,20 +158,24 @@ notifs <- sqlQuery(ch, "SELECT iso2, year, c_newinc
                    FROM view_TME_master_notification
                    WHERE year >= 2000")
 
-# get the rr incidence estimates -- since we only produce estimates for the latest year
-# in each report it is easy to extract the data as a timeseries, even though it really isn't a
-# timeseries since estimates of the previous years are null and void
+# get the rr incidence estimates -- Previously we only produced estimates for the latest year
+# in each report. In dcyear 2022 we started producing a timeseries starting in 2015
 dr_estimates <- sqlQuery(ch, paste("SELECT iso2, year, e_inc_rr_num, e_inc_rr_num_lo, e_inc_rr_num_hi
                          FROM view_TME_estimates_drtb_rawvalues
-                         WHERE year >= ", series_1_startyear) )
+                         WHERE year >= ", dr_series_2_startyear) )
 
 # get the number of rr patients started on treatment
 rr_tx <- sqlQuery(ch, paste("SELECT iso2, year,
-                  CASE WHEN COALESCE(unconf_rrmdr_tx, conf_rrmdr_tx) IS NULL THEN NULL
-			                 ELSE ISNULL(unconf_rrmdr_tx, 0) + ISNULL(conf_rrmdr_tx, 0)
+                  CASE WHEN COALESCE(unconf_rrmdr_tx, conf_rrmdr_tx,
+                                     unconf_rr_nfqr_tx, conf_rr_nfqr_tx,
+                                     conf_rr_fqr_tx) IS NULL THEN NULL
+			                 ELSE ISNULL(unconf_rrmdr_tx, 0) + ISNULL(conf_rrmdr_tx, 0) +
+                            ISNULL(unconf_rr_nfqr_tx, 0) + ISNULL(conf_rr_nfqr_tx, 0) +
+                            ISNULL(conf_rr_fqr_tx, 0)
 		              END AS rrmdr_tx
 		              FROM view_TME_master_notification
-                  WHERE year >= ", series_1_startyear))
+                  WHERE year >= ", dr_series_2_startyear))
+
 
 # Get the incidence estimate for age 0-14
 estimates_014_series_1 <- get_long_014_estimates(ch, series_1_date, series_1_startyear)
@@ -251,13 +258,13 @@ plot_inc <- function(df){
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
 
 
-  print(qplot(year, inc_series1, data=df, geom="line", colour=I("green")) +
+  print(qplot(year, inc_series1, data=df, geom="line", colour=I("blue")) +
         geom_ribbon(aes(year,
                         ymin=inc_lo_series1,
                         ymax=inc_hi_series1),
                     fill=I("green"), alpha=0.2) +
 
-        geom_line(aes(year, inc_series2), colour=I("yellow")) +
+        geom_line(aes(year, inc_series2), colour=I("green")) +
         geom_ribbon(aes(year,
                         ymin=inc_lo_series2,
                         ymax=inc_hi_series2),
@@ -306,10 +313,12 @@ dr_changes <- merge(dr_estimates, rr_tx, all.x = TRUE)
 dr_changes_targets <- targets %>%
   filter(target_code== "tgt_dr") %>%
   select(-target_code) %>%
-  merge(dr_changes, all = TRUE)
+  merge(dr_changes, all = TRUE) %>%
 
-# Add country names
-dr_changes_targets <- dr_changes_targets %>%
+  # ignore years before series 2
+  filter(year >= dr_series_2_startyear) %>%
+
+  # Add country names
   inner_join(countries, by = "iso2")
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -324,15 +333,22 @@ plot_dr_inc <- function(df){
 
   print(
 
-   ggplot(data = df, mapping = aes(x=year, y=e_inc_rr_num, ymin=0, colour = I("#009E73"))) +
+   ggplot(data = df) +
 
-     geom_pointrange(aes(x=year, ymin=e_inc_rr_num_lo, ymax=e_inc_rr_num_hi)) +
+     geom_ribbon(aes(x=year,
+                     ymin=e_inc_rr_num_lo,
+                     ymax=e_inc_rr_num_hi),
+                 fill=I("green"), alpha=0.3) +
 
-     # Add the numbers started on treatment as a black line
+     geom_line(aes(x=year, y=e_inc_rr_num, colour=I("#009E73"))) +
+
+
+     # Add the numbers started on treatment as a black line with points
      geom_line(aes(x=year, y=rrmdr_tx, colour=I("black"))) +
+     geom_point(aes(x=year, y=rrmdr_tx, colour=I("black"))) +
 
-     # add the targets as dots
-     geom_point(aes(x=year, y=target, colour=I("black"))) +
+     # add the targets as blue dots
+     geom_point(aes(x=year, y=target, colour=I("blue"))) +
 
       # Use space separators for the y axis
       scale_y_continuous(labels = rounder) +
@@ -376,10 +392,12 @@ kids_changes <- merge(kids_changes, notifs_014, all.x = TRUE)
 kids_changes_targets <- targets %>%
   filter(target_code== "tgt_014") %>%
   select(-target_code) %>%
-  merge(kids_changes, all = TRUE)
+  merge(kids_changes, all = TRUE)  %>%
 
-# Add country names
-kids_changes_targets <- kids_changes_targets %>%
+  # ignore years before series 1
+  filter(year >= series_1_startyear) %>%
+
+  # Add country names
   inner_join(countries, by = "iso2")
 
 
@@ -399,11 +417,12 @@ plot_014_inc <- function(df){
 
      geom_pointrange(aes(x=year, ymin=lo, ymax=hi)) +
 
-     # Add the numbers started on treatment as a black line
+     # Add the numbers started on treatment as a black line with diamond points
      geom_line(aes(x=year, y=c_new_014, colour=I("black"))) +
+     geom_point(aes(x=year, y=c_new_014, colour=I("black"))) +
 
      # add the targets as dots
-     geom_point(aes(x=year, y=target, colour=I("black"))) +
+     geom_point(aes(x=year, y=target, colour=I("blue"))) +
 
       # Use space separators for the y axis
       scale_y_continuous(labels = rounder) +

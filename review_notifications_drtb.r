@@ -22,9 +22,10 @@ source("set_plot_themes.r")
 
 # Define list of regions in SQL format if we don't want to plot all countries
 # (If not keep it as an empty string)
-region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
-                              WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
+# region_filter <- "AND iso2 IN (SELECT iso2 FROM view_TME_master_report_country
+#                               WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR'))"
 
+region_filter <- ""
 
 
 file_name     <- paste0(outfolder, "notifs_drtb_graphs_", Sys.Date(), ".pdf")

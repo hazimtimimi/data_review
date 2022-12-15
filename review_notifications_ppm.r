@@ -24,7 +24,7 @@ source("set_plot_themes.r")
 # (If not keep it as an empty string)
 # region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
-region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+region_filter <- ""
 
 
 file_name     <- paste0(outfolder, "ppm_graphs_", Sys.Date(), ".pdf")

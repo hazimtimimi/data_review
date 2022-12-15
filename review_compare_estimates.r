@@ -111,15 +111,21 @@ country_sql <- ifelse(g_whoregion == "",
                     "SELECT country FROM view_TME_master_report_country ORDER BY country",
                     paste0("SELECT country FROM view_TME_master_report_country WHERE g_whoregion = '", g_whoregion, "' ORDER BY country"))
 
-
-
 countries <- sqlQuery(ch, country_sql)
+
+# get list of HBCs
+hbc_sql <- ifelse(g_whoregion == "",
+                      "SELECT country FROM view_country_group_membership WHERE group_type='g_hb_tb' AND group_name = '1' ORDER BY country",
+                      paste0("SELECT country FROM view_country_group_membership WHERE group_type='g_hb_tb' AND group_name = '1' AND g_whoregion = '", g_whoregion, "' ORDER BY country"))
+
+hbc  <- sqlQuery(ch, hbc_sql)
+
 close(ch)
 
 # combine the three series into a single wider one called changes
 
-changes <- merge(estimates_series_3, estimates_series_2, all.x=TRUE)
-changes <- merge(changes, estimates_series_1, all.x=TRUE)
+changes <- merge(estimates_series_2, estimates_series_3, all=TRUE)
+changes <- merge(changes, estimates_series_1, all=TRUE)
 
 rm(list=c("estimates_series_1", "estimates_series_2", "estimates_series_3"))
 
@@ -293,7 +299,12 @@ plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_mort),    plo
 plot_blocks_to_pdf(changes, countries, paste0(outfolder, file_name_mort_hiv),plot_function = plot_mort_hiv, block_size)
 
 
+# Optional bit to produce the same charts restricted to the HBCs
 
+plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_inc),     plot_function = plot_inc, block_size)
+plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_inc_hiv), plot_function = plot_inc_hiv, block_size)
+plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_mort),    plot_function = plot_mort, block_size)
+plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_mort_hiv),plot_function = plot_mort_hiv, block_size)
 
 
 

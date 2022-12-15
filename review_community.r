@@ -23,9 +23,9 @@ source("set_plot_themes.r")
 # Define list of regions in SQL format if we don't want to plot all countries
 # (If not keep it as an empty string)
 
-region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+# region_filter <- "AND g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
-
+region_filter <- ""
 
 
 file_name_bmu_ref_data     <- paste0(outfolder, "bmu_ref_data_graphs_", Sys.Date(), ".pdf")

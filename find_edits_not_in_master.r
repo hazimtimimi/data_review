@@ -92,7 +92,7 @@ notifs_hiv_tpt_cmplt_master <- sqlQuery(channel, "SELECT country, iso2, year,
 dr_surveillance_master <- sqlQuery(channel,
                           paste("SELECT *
                                 FROM view_TME_master_dr_surveillance
-                                WHERE year = (SELECT MAX(year) FROM dcf.latest_notification)"),
+                                WHERE year = (SELECT MAX(year) FROM dcf.latest_notification) AND all_areas_covered=1"),
                            stringsAsFactors = FALSE)
 
 outcomes_master <- sqlQuery(channel,
@@ -279,15 +279,14 @@ to_csv(mdr_xdr_outcomes_diff, "mdr_xdr_outcomes_diff")
 # Move the TPT completion variables for ym2 to a separate DCF dataframe
 strategy_tpt_cmplt_dcf <- strategy_dcf %>%
   select(country, iso2, year,
-         newinc_con_prevtx = newinc_con_prevtx_ym2,
          newinc_con_prevtx_cmplt) %>%
   mutate(year = year - 1) %>%
   # remove empty rows
-  filter(!is.na(newinc_con_prevtx) | !is.na(newinc_con_prevtx_cmplt))
+  filter(!is.na(newinc_con_prevtx_cmplt))
 
 
 strategy_dcf <- strategy_dcf %>%
-  select(-prevtx_cmplt_data_available, -newinc_con_prevtx_ym2, newinc_con_prevtx_cmplt)
+  select(-prevtx_cmplt_data_available, newinc_con_prevtx_cmplt)
 
 strategy_master <- strategy_master %>%
   select(-newinc_con_prevtx_cmplt)
