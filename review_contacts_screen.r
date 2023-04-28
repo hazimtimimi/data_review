@@ -45,11 +45,11 @@ library(dplyr)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 sql <- "SELECT	country, year, newinc_con, newinc_con_screen
-FROM	dcf.latest_strategy
+FROM	dcf.latest_contacts_tpt
 UNION ALL
 SELECT country, year, newinc_con, newinc_con_screen
-FROM view_TME_master_strategy
-WHERE year BETWEEN 2019 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy)
+FROM view_TME_master_contacts_tpt
+WHERE year BETWEEN 2019 AND (SELECT MAX(year - 1) FROM dcf.latest_contacts_tpt)
 ORDER BY country,year;"
 
 # Extract data from the database
@@ -57,7 +57,7 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_strategy",
+countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_contacts_tpt",
                                      "WHERE COALESCE(newinc_con, newinc_con_screen) IS NOT NULL",
                                      region_filter,
                                      "ORDER BY country"))

@@ -60,6 +60,11 @@ outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_outcomes",
 mdr_xdr_outcomes_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_mdr_xdr_outcomes",
                        stringsAsFactors = FALSE)
 
+# tpt
+tpt_dcf  <- sqlQuery(channel, "SELECT * FROM dcf.latest_contacts_tpt",
+                     stringsAsFactors = FALSE)
+
+
 # strategy
 strategy_dcf <- sqlQuery(channel, "SELECT * FROM dcf.latest_strategy",
                        stringsAsFactors = FALSE)
@@ -107,17 +112,24 @@ mdr_xdr_outcomes_master <- sqlQuery(channel,
                                   WHERE year = (SELECT MAX(year) FROM dcf.latest_mdr_xdr_outcomes)"),
                              stringsAsFactors = FALSE)
 
+tpt_master <- sqlQuery(channel, "SELECT *
+                            FROM view_TME_master_contacts_tpt
+                            WHERE year = (SELECT MAX(year) FROM dcf.latest_contacts_tpt)",
+                            stringsAsFactors = FALSE)
+
+tpt_cmplt_master <- sqlQuery(channel, "SELECT country, iso2, year,
+                                      newinc_con_prevtx, newinc_con_prevtx_cmplt
+                            FROM view_TME_master_contacts_tpt
+                            WHERE year = (SELECT MAX(year)-1 FROM dcf.latest_contacts_tpt)",
+                            stringsAsFactors = FALSE)
+
 
 strategy_master <- sqlQuery(channel, "SELECT *
                             FROM view_TME_master_strategy
                             WHERE year = (SELECT MAX(year) FROM dcf.latest_strategy)",
                        stringsAsFactors = FALSE)
 
-strategy_tpt_cmplt_master <- sqlQuery(channel, "SELECT country, iso2, year,
-                                      newinc_con_prevtx, newinc_con_prevtx_cmplt
-                            FROM view_TME_master_strategy
-                            WHERE year = (SELECT MAX(year)-1 FROM dcf.latest_strategy)",
-                            stringsAsFactors = FALSE)
+
 
 budget_master <- sqlQuery(channel, "SELECT *
                           FROM view_TME_master_budget_expenditure
@@ -271,33 +283,40 @@ mdr_xdr_outcomes_diff <- compare_views(dcf_view = mdr_xdr_outcomes_dcf, master_v
 to_csv(mdr_xdr_outcomes_diff, "mdr_xdr_outcomes_diff")
 
 
-
-# Strategy and TPT completion
+# TPT and TPT completion
 # - - - - - - - - - - - - - -
 
-
 # Move the TPT completion variables for ym2 to a separate DCF dataframe
-strategy_tpt_cmplt_dcf <- strategy_dcf %>%
+tpt_cmplt_dcf <- tpt_dcf %>%
   select(country, iso2, year,
          newinc_con_prevtx_cmplt) %>%
   mutate(year = year - 1) %>%
   # remove empty rows
   filter(!is.na(newinc_con_prevtx_cmplt))
 
-
-strategy_dcf <- strategy_dcf %>%
+tpt_dcf <- tpt_dcf %>%
   select(-prevtx_cmplt_data_available, newinc_con_prevtx_cmplt)
 
-strategy_master <- strategy_master %>%
+tpt_master <- tpt_master %>%
   select(-newinc_con_prevtx_cmplt)
 
+
+tpt_diff <- compare_views(dcf_view = tpt_dcf, master_view = tpt_master)
+to_csv(tpt_diff, "tpt_diff")
+
+
+tpt_cmplt_diff <- compare_views(dcf_view = tpt_cmplt_dcf, master_view = tpt_cmplt_master)
+to_csv(tpt_cmplt_diff, "tpt_cmplt_diff")
+
+
+
+
+# Strategy
+# - - - - -
 
 
 strategy_diff <- compare_views(dcf_view = strategy_dcf, master_view = strategy_master)
 to_csv(strategy_diff, "strategy_diff")
-
-strategy_tpt_cmplt_diff <- compare_views(dcf_view = strategy_tpt_cmplt_dcf, master_view = strategy_tpt_cmplt_master)
-to_csv(strategy_tpt_cmplt_diff, "strategy_tpt_cmplt_diff")
 
 
 

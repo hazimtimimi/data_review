@@ -47,22 +47,22 @@ library(dplyr)
 sql <- "WITH completion AS
 (
 SELECT	iso2, year - 1 AS year, newinc_con_prevtx_cmplt
-FROM	dcf.latest_strategy
+FROM	dcf.latest_contacts_tpt
 UNION ALL
 SELECT iso2, year, newinc_con_prevtx_cmplt
-FROM view_TME_master_strategy
-WHERE year BETWEEN 2019 AND (SELECT MAX(year - 2) FROM dcf.latest_strategy)
+FROM view_TME_master_contacts_tpt
+WHERE year BETWEEN 2019 AND (SELECT MAX(year - 2) FROM dcf.latest_contacts_tpt)
 )
 
 SELECT	country, year, newinc_con_prevtx, newinc_con04_prevtx, NULL AS newinc_con_prevtx_cmplt
-FROM	dcf.latest_strategy
+FROM	dcf.latest_contacts_tpt
 UNION ALL
-SELECT country, view_TME_master_strategy.year, newinc_con_prevtx, newinc_con04_prevtx, completion.newinc_con_prevtx_cmplt
-FROM view_TME_master_strategy
+SELECT country, view_TME_master_contacts_tpt.year, newinc_con_prevtx, newinc_con04_prevtx, completion.newinc_con_prevtx_cmplt
+FROM view_TME_master_contacts_tpt
 	LEFT OUTER JOIN completion ON
-		view_TME_master_strategy.iso2 = completion.iso2 AND
-		view_TME_master_strategy.year = completion.year
-WHERE view_TME_master_strategy.year BETWEEN 2015 AND (SELECT MAX(year - 1) FROM dcf.latest_strategy)
+		view_TME_master_contacts_tpt.iso2 = completion.iso2 AND
+		view_TME_master_contacts_tpt.year = completion.year
+WHERE view_TME_master_contacts_tpt.year BETWEEN 2015 AND (SELECT MAX(year - 1) FROM dcf.latest_contacts_tpt)
 ORDER BY country,year;"
 
 # Extract data from the database
@@ -70,7 +70,7 @@ channel <- odbcDriverConnect(connection_string)
 data_to_plot <- sqlQuery(channel,sql)
 
 # get list of countries
-countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_strategy",
+countries <- sqlQuery(channel, paste("SELECT country FROM dcf.latest_contacts_tpt",
                                      "WHERE COALESCE(newinc_con_prevtx, newinc_con04_prevtx) IS NOT NULL",
                                      region_filter,
                                      "ORDER BY country"))
