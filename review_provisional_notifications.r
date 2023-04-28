@@ -27,8 +27,6 @@ source("set_plot_themes.r")
 
 region_filter <- ""
 
-report_year <- 2022
-
 file_name     <- paste0(outfolder, "prov_notifs_graphs_", Sys.Date(), ".pdf")
 
 
@@ -53,11 +51,8 @@ library(dplyr)
 sql <- paste("SELECT country, year, c_newinc FROM dcf.latest_notification
               UNION ALL
               SELECT country, year, c_newinc FROM view_TME_master_notification
-              WHERE year BETWEEN",
-              report_year-5,
-              "AND",
-              report_year-1,
-              "ORDER BY country, year")
+              WHERE year BETWEEN (SELECT max(year - 5) from dcf.latest_notification) AND (SELECT max(year) from dcf.latest_notification)
+              ORDER BY country, year")
 
 
 # Extract data from the database
@@ -76,9 +71,8 @@ prov_notifs <- sqlQuery(channel,
                               FROM dcf.latest_provisional_c_newinc",
                               "WHERE COALESCE(m_12, q_4) IS NOT NULL",
                               region_filter,
-                              "AND year = ",
-                              report_year-1,
-                              "ORDER BY country"))
+                              "AND year = (SELECT max(year) from dcf.latest_notification)
+                              ORDER BY country"))
 
 close(channel)
 
