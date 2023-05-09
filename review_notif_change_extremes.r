@@ -90,7 +90,7 @@ cut_extremes <- function(df, var_name, n) {
                                 0,
                                 nth(!!sym(var_name), n, order_by = desc(!!sym(var_name)), na_rm = TRUE),
                                 first(!!sym(var_name), order_by = desc(!!sym(var_name)), na_rm = TRUE)),
-                     labels = c(paste('Top', n, 'decling'), 'Declining', 'Increasing', paste('Top', n, 'increasing')),
+                     labels = c(paste('Top', n, 'declining'), 'Declining', 'Increasing', paste('Top', n, 'increasing')),
                      right = FALSE,
                      include.lowest = TRUE)) %>%
     arrange(!!sym(var_name))
