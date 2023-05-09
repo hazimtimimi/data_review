@@ -97,7 +97,7 @@ plot_faceted <- function(df){
             geom_line(aes(year, conf_rrmdr_tx), colour=I("green"), alpha=0.5, size = 1.2) +
 
             # Use space separators for the y axis
-            scale_y_continuous(name = "All RR-TB cases (blue), RR-TB cases started on treatment (green) (number)",
+            scale_y_continuous(name = "Confirmed RR-TB cases excluding FQR (blue), and number started on treatment (green)",
                                labels = rounder) +
 
             scale_x_continuous(name="", breaks = c(2010, 2015, 2020)) +
@@ -109,7 +109,7 @@ plot_faceted <- function(df){
 
             expand_limits(y=0) +
 
-            theme_gtbr_2021(base_size=8, axis_text_size = 6)
+            theme_gtbr_2021(base_size=6, axis_text_size = 6)
 
   # note that inside a function the print() command is needed to paint to the canvass
   #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
