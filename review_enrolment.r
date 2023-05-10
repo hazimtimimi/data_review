@@ -46,7 +46,7 @@ library(dplyr)
 # least 5% of notifications
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, c_notified, nrr, nrr_tx, conf_rr_nfqr, conf_rr_nfqr_tx, unconf_rr_nfqr_tx,
+sql <- "SELECT country, c_notified, nrr, nrr_tx, conf_rr_nfqr, conf_rr_nfqr_tx,
 		    ABS(ISNULL(nrr, 0) + ISNULL(conf_rr_nfqr,0) - c_notified) * 100.00 / c_notified AS diff_pct
         FROM dcf.latest_notification
         WHERE ISNULL(c_notified, 0) > 10 AND
@@ -63,7 +63,7 @@ countries <- notifs_enrolments %>% select(country) %>% arrange(toupper(country))
 
 # Flip the data to plot to long format
 data_to_plot <- notifs_enrolments %>%
-  tidyr::pivot_longer(c_notified:unconf_rr_nfqr_tx)
+  tidyr::pivot_longer(c_notified:conf_rr_nfqr_tx)
 
 
 # Simple rounding function that returns a string rounded to the nearest integer and
@@ -96,25 +96,23 @@ plot_faceted <- function(df){
                        labels = rounder) +
 
     scale_x_discrete(name="",
-                     limits=c("Tot" = "c_notified",
-                              "ds" = "nrr",
-                              "dstx" = "nrr_tx",
-                              "dr" = "conf_rr_nfqr",
-                              "drtx" = "conf_rr_nfqr_tx",
-                              "u" = "unconf_rr_nfqr_tx"),
-                     labels=c("Tot",
-                              "ds",
-                              "dstx",
-                              "dr",
-                              "drtx",
-                              "u")) +
+                     limits=c("c_notified",
+                              "nrr",
+                              "nrr_tx",
+                              "conf_rr_nfqr",
+                              "conf_rr_nfqr_tx"),
+                     # Use data collection question numbers as labels
+                     labels=c("2.1\nto\n2.4",
+                              "2.17",
+                              "2.18",
+                              "2.19",
+                              "2.20")) +
 
     scale_fill_manual(values = c("c_notified" = "darkgreen",
                                  "nrr" = "darkblue",
                                  "nrr_tx" = "blue",
                                  "conf_rr_nfqr" = "darkred",
-                                 "conf_rr_nfqr_tx" = "red",
-                                 "unconf_rr_nfqr_tx" = "red")) +
+                                 "conf_rr_nfqr_tx" = "red")) +
 
     facet_wrap(~country, scales="free_y",
                # Use the labeller function to make sure long country names are wrapped in panel headers
