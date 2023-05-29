@@ -28,7 +28,7 @@ source("set_plot_themes.r")
 region_filter <- ""
 
 file_name     <- paste0(outfolder, "prov_notifs_graphs_", Sys.Date(), ".pdf")
-
+file_name_modelled <- paste0(outfolder, "modelled_country_graphs_", Sys.Date(), ".pdf")
 
 
 # load packages ----
@@ -71,7 +71,7 @@ prov_notifs <- sqlQuery(channel,
                               FROM dcf.latest_provisional_c_newinc",
                               "WHERE COALESCE(m_12, q_4) IS NOT NULL",
                               region_filter,
-                              "AND year = (SELECT max(year) from dcf.latest_notification)
+                              "AND year <= (SELECT max(year) from dcf.latest_notification)
                               ORDER BY country"))
 
 close(channel)
@@ -83,6 +83,11 @@ data_to_plot <- data_to_plot %>%
 
 # List of countries to plot
 countries <- select(prov_notifs, country)
+
+modelled_countries <- as.data.frame(c('Angola', 'Azerbaijan', 'Bangladesh', 'Brazil', 'China', 'Colombia', 'Indonesia', 'Kazakhstan', 'Kenya',
+                        'Kyrgyzstan', 'Cambodia', 'Lesotho', 'Mexico', 'Myanmar', 'Malaysia', 'Nepal', 'Pakistan', 'Peru',
+                        'Philippines', 'Russian Federation', 'Thailand', 'Timor-Leste', 'Viet Nam', 'Zimbabwe'))
+
 
 
 # Simple rounding function that returns a string rounded to the nearest integer and
@@ -106,7 +111,7 @@ plot_faceted <- function(df){
 
   graphs <- qplot(year, c_newinc, data=df, geom="line", colour=I("blue")) +
 
-            geom_point(aes(year, c_newinc_prov), colour=I("green"), size=2 ) +
+            geom_point(aes(year, c_newinc_prov), colour=I("green"), size=1 ) +
 
             # Use space separators for the y axis
             scale_y_continuous(name = "New and relapse annual cases (blue) and provisional monthly/quarterly (green) (number)",
@@ -140,5 +145,8 @@ source("plot_blocks_to_pdf.r")
 
 
 plot_blocks_to_pdf(data_to_plot, countries, file_name)
+
+# And a second set for modelled countries only
+plot_blocks_to_pdf(data_to_plot, modelled_countries, file_name_modelled)
 
 
