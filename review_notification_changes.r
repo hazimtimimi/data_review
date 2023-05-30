@@ -35,7 +35,7 @@ file_name_cnr <- paste0(outfolder, "notif_cnr_", Sys.Date(), ".pdf")
 # Define list of regions in SQL format if we don't want to plot all countries
 # (If not keep it as an empty string)
 
-region_filter <- "WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
+region_filter <- ""  #WHERE g_whoregion IN ('AFR', 'EMR','SEA', 'WPR')"
 
 start_year <- 2015
 minimum_notifs <- 1000
@@ -121,66 +121,6 @@ dcf_year <- first(notifs_dcf$year)
 # Define graph layout ----
 # - - - - - - - - - - -
 
-plot_faceted_pcnt <- function(df){
-
-  # Blue line  = Year on year % change in case notification rate
-
-  graphs <- qplot(year, c_newinc_100k_pcnt, data=df, geom="line", colour=I("blue")) +
-
-            facet_wrap(~country,
-                       scales="free_y",
-                       # Use the labeller function to make sure long country names are wrapped in panel headers
-                       labeller = label_wrap_gen(width = 25)) +
-
-            scale_x_continuous(name="", breaks = c(start_year, start_year+2, start_year+4)) +
-
-            ylab("Annual change in case notification rate (%)") +
-
-            expand_limits(y=c(-10,10)) +
-
-            theme_gtbr_2021(base_size=8, axis_text_size = 6) +
-
-            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed") +
-
-            # Add a shaded ribbon showing glm mean and standard errors
-            # But do this on all years except the final (dcf) year to get a visual hint
-            # as to whether the final point deviates recent trends
-            # (although I'm not sure if this is sound methodologically ...)
-            geom_smooth(data = filter(df, year < dcf_year), method="glm", colour = "black")
-
-  # note that inside a function the print() command is needed to paint to the canvass
-  #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
-  print(graphs)
-
-}
-
-plot_faceted_delta <- function(df){
-
-  # Blue line  = Year on year change in absolute number of case notification rate
-
-  graphs <- qplot(year, c_newinc_100k_delta, data=df, geom="line", colour=I("blue")) +
-
-            facet_wrap(~country,
-                       scales="free_y",
-                       # Use the labeller function to make sure long country names are wrapped in panel headers
-                       labeller = label_wrap_gen(width = 25)) +
-
-            scale_x_continuous(name="", breaks = c(start_year, start_year+2, start_year+4)) +
-
-            ylab("Annual change in case notification rate (number)") +
-
-            expand_limits(y=0) +
-            theme_gtbr_2021(base_size=8, axis_text_size = 6) +
-
-            # Add a black line to highlight 0
-            geom_hline(aes(yintercept=0), colour = "gray", linetype = "dashed")
-
-  # note that inside a function the print() command is needed to paint to the canvass
-  #(see http://stackoverflow.com/questions/19288101/r-pdf-usage-inside-a-function)
-  print(graphs)
-
-}
-
 plot_faceted_cnr <- function(df){
 
   # Blue line  = case notification rate
@@ -189,6 +129,7 @@ plot_faceted_cnr <- function(df){
   graphs <- qplot(year, c_newinc_100k, data=df, geom="line", colour=I("blue")) +
 
     facet_wrap(~country,
+               scales="free_y",
     # Use the labeller function to make sure long country names are wrapped in panel headers
     labeller = label_wrap_gen(width = 25)) +
 
@@ -203,10 +144,13 @@ plot_faceted_cnr <- function(df){
     theme_gtbr_2021(base_size=8, axis_text_size = 6) +
 
     # Add a shaded ribbon showing glm mean and standard errors
-    # But do this on all years except the final (dcf) year to get a visual hint
-    # as to whether the final point deviates recent trends
+    # But do this on all years prior to 2020 (COVID) to get a visual hint
+    # as to whether the final points deviates recent trends
     # (although I'm not sure if this is sound methodologically ...)
-    geom_smooth(data = filter(df, year < dcf_year), method="glm", colour = "black", size=0.5)
+    geom_smooth(data = filter(df, year < 2020),
+                method="glm",
+                colour = "black",
+                size=0.5)
 
 
   # note that inside a function the print() command is needed to paint to the canvass
@@ -224,8 +168,6 @@ plot_faceted_cnr <- function(df){
 source("plot_blocks_to_pdf.r")
 
 
-plot_blocks_to_pdf(notifs, countries, file_name_pcnt, plot_function = plot_faceted_pcnt)
-plot_blocks_to_pdf(notifs, countries, file_name_delta, plot_function = plot_faceted_delta)
 plot_blocks_to_pdf(notifs, countries, file_name_cnr, plot_function = plot_faceted_cnr)
 
 
