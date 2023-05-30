@@ -48,17 +48,22 @@ library(ggplot2)
 # reported as retreived from the dcf views (dcf = data collection form)
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-sql <- "SELECT country, year, conf_rr_nfqr AS conf_rrmdr, conf_rr_nfqr_tx AS conf_rrmdr_tx FROM dcf.latest_notification
-                UNION ALL
-                SELECT country, year, conf_rrmdr,
-
-                /* next statement is possible because variables are mutually exclusive -- switch happened in 2015 dcyear */
-                CASE WHEN COALESCE(conf_mdr_tx, conf_rrmdr_tx) is null THEN NULL
-                     ELSE ISNULL(conf_mdr_tx,0) + ISNULL(conf_rrmdr_tx,0)
-                END AS conf_rrmdr_tx
-                FROM view_TME_master_notification
-                WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification)
-				        ORDER BY country,year"
+sql <- "SELECT country, year,
+                conf_rr_nfqr,
+                conf_rr_nfqr_tx
+        FROM dcf.latest_notification
+        UNION ALL
+        SELECT country, year,
+        /* next statements are possible because variables are mutually exclusive */
+              CASE WHEN COALESCE(conf_rrmdr, conf_rr_nfqr) is null THEN NULL
+                   ELSE ISNULL(conf_rrmdr,0) + ISNULL(conf_rr_nfqr,0)
+              END AS conf_rr_nfqr,
+        CASE WHEN COALESCE(conf_mdr_tx, conf_rrmdr_tx, conf_rr_nfqr_tx) is null THEN NULL
+             ELSE ISNULL(conf_mdr_tx,0) + ISNULL(conf_rrmdr_tx,0) + ISNULL(conf_rr_nfqr_tx,0)
+        END AS conf_rr_nfqr_tx
+        FROM view_TME_master_notification
+        WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification)
+        ORDER BY country,year"
 
 # Extract data from the database
 channel <- odbcDriverConnect(connection_string)
@@ -93,8 +98,8 @@ plot_faceted <- function(df){
   # Green line = MDR-TB cases detected
   # Grey line = RR-TB cases started on treatment
 
-  graphs <- qplot(year, conf_rrmdr, data=df, geom="line", colour=I("blue")) +
-            geom_line(aes(year, conf_rrmdr_tx), colour=I("green"), alpha=0.5, size = 1.2) +
+  graphs <- qplot(year, conf_rr_nfqr, data=df, geom="line", colour=I("blue")) +
+            geom_line(aes(year, conf_rr_nfqr_tx), colour=I("green"), alpha=0.5, size = 1.2) +
 
             # Use space separators for the y axis
             scale_y_continuous(name = "Confirmed RR-TB cases excluding FQR (blue), and number started on treatment (green)",
