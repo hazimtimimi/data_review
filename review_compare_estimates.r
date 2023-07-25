@@ -30,7 +30,7 @@ source("set_environment.r")  #particular to each person so this file is in the i
 
 
 file_name_inc      <- paste0(g_whoregion, "incidence_graphs_", Sys.Date(), ".pdf")
-file_name_inc_hiv  <- paste0(g_whoregion, "inccidence_hiv_graphs_", Sys.Date(), ".pdf")
+file_name_inc_hiv  <- paste0(g_whoregion, "incidence_hiv_graphs_", Sys.Date(), ".pdf")
 file_name_mort     <- paste0(g_whoregion, "mortality_graphs_", Sys.Date(), ".pdf")
 file_name_mort_hiv <- paste0(g_whoregion, "mortality_hiv_graphs_", Sys.Date(), ".pdf")
 
@@ -81,19 +81,6 @@ get_historical_estimates <- function(channel,version,limiting_date){
                rename_at(vars(starts_with("e_mort_tbhiv_100k")),
                          funs(paste0(str_replace(., "e_mort_tbhiv_100k" , "mort_hiv"),"_" , version)))
 
-  # estimates <- rename(estimates, c("e_inc_100k" = paste0("inc_",version),
-  #                                    "e_inc_100k_lo" = paste0("inc_lo_",version),
-  #                                    "e_inc_100k_hi" = paste0("inc_hi_",version),
-  #                                    "e_inc_tbhiv_100k" = paste0("inc_hiv_",version),
-  #                                    "e_inc_tbhiv_100k_lo" = paste0("inc_hiv_lo_",version),
-  #                                    "e_inc_tbhiv_100k_hi" = paste0("inc_hiv_hi_",version),
-  #                                    "e_mort_exc_tbhiv_100k" = paste0("mort_",version),
-  #                                    "e_mort_exc_tbhiv_100k_lo" = paste0("mort_lo_",version),
-  #                                    "e_mort_exc_tbhiv_100k_hi" = paste0("mort_hi_",version),
-  #                                    "e_mort_tbhiv_100k" = paste0("mort_hiv_",version),
-  #                                    "e_mort_tbhiv_100k_lo" = paste0("mort_hiv_lo_",version),
-  #                                    "e_mort_tbhiv_100k_hi" = paste0("mort_hiv_hi_",version)))
-
 
   return(estimates)
 }
@@ -119,6 +106,12 @@ hbc_sql <- ifelse(g_whoregion == "",
                       paste0("SELECT country FROM view_country_group_membership WHERE group_type='g_hb_tb' AND group_name = '1' AND g_whoregion = '", g_whoregion, "' ORDER BY country"))
 
 hbc  <- sqlQuery(ch, hbc_sql)
+
+# get list of USAID countries
+usaid <- sqlQuery(ch, "SELECT country FROM view_TME_master_report_country
+                          WHERE iso2 in ('AF','BD','KH','CD','ET','IN','ID','KE','KG','MW','MZ','MM',
+                                          'NG','PK','PH','ZA','TJ','UG','UA','TZ','UZ','VN','ZM','ZW')
+                          ORDER BY country")
 
 close(ch)
 
@@ -177,7 +170,10 @@ plot_inc <- function(df){
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("Incidence rate per 100 000 population per year") +
+        ylab(paste0("Incidence (rate/100k pop/yr)",
+                    "; blue=", substr(series_1_date, 1, 4),
+                    "; red=", substr(series_2_date, 1, 4),
+                    "; green=", substr(series_3_date, 1, 4))) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="bottom"))
@@ -210,7 +206,10 @@ plot_inc_hiv <- function(df){
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("HIV-positive TB incidence rate per 100 000 population per year") +
+        ylab(paste0("TB/HIV incidence (rate/100k pop/yr)",
+                    "; blue=", substr(series_1_date, 1, 4),
+                    "; red=", substr(series_2_date, 1, 4),
+                    "; green=", substr(series_3_date, 1, 4))) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="bottom"))
@@ -243,7 +242,10 @@ plot_mort <- function(df){
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("Mortality (excluding TB/HIV) rate per 100 000 population per year") +
+        ylab(paste0("Mortality, excluding TB/HIV (rate/100k pop/yr)",
+                    "; blue=", substr(series_1_date, 1, 4),
+                    "; red=", substr(series_2_date, 1, 4),
+                    "; green=", substr(series_3_date, 1, 4))) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="none"))
@@ -276,7 +278,10 @@ plot_mort_hiv <- function(df){
                     fill=I("green"), alpha=0.2) +
         facet_wrap(~country, scales="free_y") +
         xlab("") +
-        ylab("HIV-positive TB mortality rate per 100 000 population per year") +
+        ylab(paste0("TB/HIV mortality (rate/100k pop/yr)",
+                    "; blue=", substr(series_1_date, 1, 4),
+                    "; red=", substr(series_2_date, 1, 4),
+                    "; green=", substr(series_3_date, 1, 4))) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="none"))
@@ -306,6 +311,10 @@ plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_inc_hiv), p
 plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_mort),    plot_function = plot_mort, block_size)
 plot_blocks_to_pdf(changes, hbc, paste0(outfolder, 'hbc_', file_name_mort_hiv),plot_function = plot_mort_hiv, block_size)
 
+# Optional bit to produce the same charts restricted to the USAID priority countries
 
+block_size <- 12
+plot_blocks_to_pdf(changes, usaid, paste0(outfolder, 'USAID_', file_name_inc),     plot_function = plot_inc, block_size)
+plot_blocks_to_pdf(changes, usaid, paste0(outfolder, 'USAID_', file_name_mort),    plot_function = plot_mort, block_size)
 
 
