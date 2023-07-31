@@ -37,13 +37,13 @@ theme_gtbr_2021 <- function(base_size=14, base_family="", axis_text_size=8) {
     axis.ticks.x = element_line(colour = gray),
     axis.ticks.y = element_blank(),
 
-    axis.line.x = ggplot2::element_line(colour=gray, size = 0.25),
+    axis.line.x = ggplot2::element_line(colour=gray, linewidth = 0.25),
     axis.line.y = element_blank(),
 
     #Grid lines
     panel.grid.minor = ggplot2::element_blank(),
 
-    panel.grid.major.y = ggplot2::element_line(colour = faint_gray, size = 0.1),
+    panel.grid.major.y = ggplot2::element_line(colour = faint_gray, linewidth = 0.1),
     panel.grid.major.x = ggplot2::element_blank(),
 
     # Have plain background in headings of facet sub-plots
