@@ -213,9 +213,9 @@ plot_inc <- function(df){
         facet_wrap(~country, scales="free_y") +
         xlab("") +
         ylab(paste0("Incidence (rate/100k pop/yr)",
-                    "; blue=", substr(series_1_date, 1, 4),
-                    "; red=", substr(series_2_date, 1, 4),
-                    "; green=", substr(series_3_date, 1, 4))) +
+                    "; blue=", series_1_desc,
+                    "; red=", series_2_desc,
+                    "; green=", series_3_desc)) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="bottom"))
@@ -249,9 +249,9 @@ plot_inc_h <- function(df){
         facet_wrap(~country, scales="free_y") +
         xlab("") +
         ylab(paste0("TB/HIV incidence (rate/100k pop/yr)",
-                    "; blue=", substr(series_1_date, 1, 4),
-                    "; red=", substr(series_2_date, 1, 4),
-                    "; green=", substr(series_3_date, 1, 4))) +
+                    "; blue=", series_1_desc,
+                    "; red=", series_2_desc,
+                    "; green=", series_3_desc)) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="bottom"))
@@ -267,8 +267,8 @@ plot_mort_nh <- function(df){
 
   print(qplot(year, mort_nh_series1, data=df, geom="line", colour=I("blue")) +
         geom_ribbon(aes(year,
-                        ymin=mmort_nh_lo_series1,
-                        ymax=mmort_nh_hi_series1),
+                        ymin=mort_nh_lo_series1,
+                        ymax=mort_nh_hi_series1),
                     fill=I("blue"), alpha=0.2) +
 
         geom_line(aes(year, mort_nh_series2), colour=I("red")) +
@@ -285,9 +285,9 @@ plot_mort_nh <- function(df){
         facet_wrap(~country, scales="free_y") +
         xlab("") +
         ylab(paste0("Mortality, excluding TB/HIV (rate/100k pop/yr)",
-                    "; blue=", substr(series_1_date, 1, 4),
-                    "; red=", substr(series_2_date, 1, 4),
-                    "; green=", substr(series_3_date, 1, 4))) +
+                    "; blue=", series_1_desc,
+                    "; red=", series_2_desc,
+                    "; green=", series_3_desc)) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="none"))
@@ -321,9 +321,9 @@ plot_mort_h <- function(df){
         facet_wrap(~country, scales="free_y") +
         xlab("") +
         ylab(paste0("TB/HIV mortality (rate/100k pop/yr)",
-                    "; blue=", substr(series_1_date, 1, 4),
-                    "; red=", substr(series_2_date, 1, 4),
-                    "; green=", substr(series_3_date, 1, 4))) +
+                    "; blue=", series_1_desc,
+                    "; red=", series_2_desc,
+                    "; green=", series_3_desc)) +
         expand_limits(y=0) +
         theme_bw(base_size=8) +
         theme(legend.position="none"))
@@ -358,9 +358,9 @@ plot_rr_new <- function(df){
           facet_wrap(~country, scales="free_y") +
           xlab("") +
           ylab(paste0("Proportion of RR among new pulm bac-confirmed cases",
-                      "; blue=", substr(series_1_date, 1, 4),
-                      "; red=", substr(series_2_date, 1, 4),
-                      "; green=", substr(series_3_date, 1, 4))) +
+                      "; blue=", series_1_desc,
+                      "; red=", series_2_desc,
+                      "; green=", series_3_desc)) +
           expand_limits(y=0) +
           theme_bw(base_size=8) +
           theme(legend.position="none"))
@@ -396,9 +396,9 @@ plot_rr_ret <- function(df){
           facet_wrap(~country, scales="free_y") +
           xlab("") +
           ylab(paste0("Proportion of RR among previously treated pulm bac-confirmed cases",
-                      "; blue=", substr(series_1_date, 1, 4),
-                      "; red=", substr(series_2_date, 1, 4),
-                      "; green=", substr(series_3_date, 1, 4))) +
+                      "; blue=", series_1_desc,
+                      "; red=", series_2_desc,
+                      "; green=", series_3_desc)) +
           expand_limits(y=0) +
           theme_bw(base_size=8) +
           theme(legend.position="none"))
@@ -434,9 +434,9 @@ plot_inc_rr <- function(df){
           facet_wrap(~country, scales="free_y") +
           xlab("") +
           ylab(paste0("Incidence of RR-TB (number)",
-                      "; blue=", substr(series_1_date, 1, 4),
-                      "; red=", substr(series_2_date, 1, 4),
-                      "; green=", substr(series_3_date, 1, 4))) +
+                      "; blue=", series_1_desc,
+                      "; red=", series_2_desc,
+                      "; green=", series_3_desc)) +
           expand_limits(y=0) +
           theme_bw(base_size=8) +
           theme(legend.position="none"))
@@ -454,25 +454,25 @@ source("plot_blocks_to_pdf.r")
 
 block_size <- ifelse(g_whoregion == "SEA", 8, 16)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    countries,
                    paste0(outfolder, file_name_inc),
                    plot_function = plot_inc,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    countries,
                    paste0(outfolder, file_name_inc_h),
                    plot_function = plot_inc_h,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    countries,
                    paste0(outfolder, file_name_mort_nh),
                    plot_function = plot_mort_nh,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    countries,
                    paste0(outfolder, file_name_mort_h),
                    plot_function = plot_mort_h,
@@ -500,30 +500,48 @@ plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
 
 
 # Optional bit to produce the same charts restricted to the HBCs
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    hbc,
                    paste0(outfolder, 'hbc_', file_name_inc),
                    plot_function = plot_inc,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    hbc,
                    paste0(outfolder, 'hbc_', file_name_inc_h),
                    plot_function = plot_inc_h,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    hbc,
                    paste0(outfolder, 'hbc_', file_name_mort_nh),
                    plot_function = plot_mort_nh,
                    block_size)
 
-plot_blocks_to_pdf(estimates_changes,
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2010),
                    hbc,
                    paste0(outfolder, 'hbc_', file_name_mort_h),
                    plot_function = plot_mort_h,
                    block_size)
 
+# RR timeseries start at 2015!
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   hbc,
+                   paste0(outfolder, 'hbc_', file_name_rr_new),
+                   plot_function = plot_rr_new,
+                   block_size)
+
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   hbc,
+                   paste0(outfolder, 'hbc_', file_name_rr_ret),
+                   plot_function = plot_rr_ret,
+                   block_size)
+
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   hbc,
+                   paste0(outfolder, 'hbc_', file_name_inc_rr),
+                   plot_function = plot_inc_rr,
+                   block_size)
 
 
 # Optional bit to produce the charts restricted to the USAID countries priority countries
@@ -535,8 +553,26 @@ plot_blocks_to_pdf(estimates_changes,
 
 plot_blocks_to_pdf(estimates_changes,
                    usaid_countries,
-                   paste0(outfolder, 'USAID_', file_name_mmort_nh),
+                   paste0(outfolder, 'USAID_', file_name_mort_nh),
                    plot_function = plot_mort_nh,
                    block_size = 8)
 
+# RR timeseries start at 2015!
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   usaid_countries,
+                   paste0(outfolder, 'USAID_', file_name_rr_new),
+                   plot_function = plot_rr_new,
+                   block_size = 8)
+
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   usaid_countries,
+                   paste0(outfolder, 'USAID_', file_name_rr_ret),
+                   plot_function = plot_rr_ret,
+                   block_size = 8)
+
+plot_blocks_to_pdf(estimates_changes |> filter(year >= 2015),
+                   usaid_countries,
+                   paste0(outfolder, 'USAID_', file_name_inc_rr),
+                   plot_function = plot_inc_rr,
+                   block_size = 8)
 
