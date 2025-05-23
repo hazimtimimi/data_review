@@ -15,13 +15,13 @@ theme_gtbr_2021 <- function(base_size=14, base_family="", axis_text_size=8) {
 
     #Legend format
     legend.position = "bottom",
-    legend.text.align = 0,
     legend.background = element_blank(),
     legend.title = element_blank(),
     legend.key = element_blank(),
     legend.text = element_text(family=base_family,
                                size=base_size,
-                               colour=charcoal),
+                               colour=charcoal,
+                               hjust=0),
 
     #Axis format
     axis.title = element_text(family=base_family,

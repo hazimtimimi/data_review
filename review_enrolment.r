@@ -103,10 +103,10 @@ plot_faceted <- function(df){
                               "conf_rr_nfqr_tx"),
                      # Use data collection question numbers as labels
                      labels=c("2.1\nto\n2.4",
-                              "2.17",
-                              "2.18",
-                              "2.19",
-                              "2.20")) +
+                              "DTX\n1",
+                              "DTX\n2",
+                              "DTX\n3",
+                              "DTX\n4")) +
 
     scale_fill_manual(values = c("c_notified" = "darkgreen",
                                  "nrr" = "darkblue",

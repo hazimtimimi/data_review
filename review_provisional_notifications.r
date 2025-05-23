@@ -82,7 +82,7 @@ data_to_plot <- data_to_plot %>%
   left_join(prov_notifs, by = c("country", "year"))
 
 # List of countries to plot
-countries <- select(prov_notifs, country)
+countries <- select(prov_notifs, country) |> unique()
 
 modelled_countries <- as.data.frame(c('Angola', 'Azerbaijan', 'Bangladesh', 'Brazil', 'China', 'Colombia', 'Indonesia', 'Kazakhstan', 'Kenya',
                         'Kyrgyzstan', 'Cambodia', 'Lesotho', 'Mexico', 'Myanmar', 'Malaysia', 'Nepal', 'Pakistan', 'Peru',
@@ -117,7 +117,7 @@ plot_faceted <- function(df){
             scale_y_continuous(name = "New and relapse annual cases (blue) and provisional monthly/quarterly (green) (number)",
                                labels = rounder) +
 
-            scale_x_continuous(name="", breaks = c(2016, 2018, 2020)) +
+            scale_x_continuous(name="", breaks = seq(min(df$year), max(df$year), by=2)) +
 
             facet_wrap(~country,
                        scales="free_y",

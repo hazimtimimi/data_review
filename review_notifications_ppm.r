@@ -143,7 +143,7 @@ graphs <- qplot(year, pcnt_ppm_private, data=df, geom="point", colour=I("blue"))
           scale_y_continuous(name = "Private-public (blue) and public-public (green) notifications (% of total new and relapse)",
                              labels = rounder) +
 
-          scale_x_continuous(name="", breaks = c(2015, 2018, 2021)) +
+          scale_x_continuous(name="", breaks = seq(min(df$year), max(df$year), by=3)) +
 
           facet_wrap(~country,
                      scales="free_y",

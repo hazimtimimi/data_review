@@ -101,7 +101,7 @@ plot_faceted <- function(df){
             scale_y_continuous(name = "TB/HIV cases (red), on ART: NTP reported (blue), on ART: UNAIDS (black dashed) (number)",
                                labels = rounder) +
 
-            scale_x_continuous(name="", breaks = c(2010, 2014, 2018)) +
+            scale_x_continuous(name="", breaks = seq(min(df$year), max(df$year), by=4)) +
 
             facet_wrap(~country, scales="free_y",
                      # Use the labeller function to make sure long country names are wrapped in panel headers

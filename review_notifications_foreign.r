@@ -52,7 +52,7 @@ sql <- "SELECT country, year, notif_foreign, c_newinc FROM dcf.latest_notificati
                 WHERE notif_foreign IS NOT NULL
                 UNION ALL
                 SELECT country, year, notif_foreign, c_newinc FROM view_TME_master_notification
-                WHERE year BETWEEN 2006 AND (SELECT MAX(year - 1) FROM dcf.latest_notification) AND
+                WHERE year BETWEEN 2010 AND (SELECT MAX(year - 1) FROM dcf.latest_notification) AND
   					    iso2 IN (SELECT iso2 from dcf.latest_notification WHERE notif_foreign IS NOT NULL)
 				        ORDER BY country,year"
 

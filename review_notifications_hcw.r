@@ -127,7 +127,7 @@ graphs <- qplot(year, hcw_tot, data=df, geom="point", colour=I("blue")) +
           scale_y_continuous(name = "Workers at healthcare facilities (blue) and TB cases among  healthcare workers (green) (number per year)",
                              labels = rounder) +
 
-          scale_x_continuous(name="", breaks = c(2010, 2015, 2020)) +
+          scale_x_continuous(name="", breaks = seq(min(df$year), max(df$year), by=4)) +
 
           facet_wrap(~country,
                      scales="free_y",

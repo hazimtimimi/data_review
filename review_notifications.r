@@ -51,7 +51,7 @@ library(ggplot2)
 sql <- "SELECT country, year, c_newinc, c_notified FROM dcf.latest_notification
                 UNION ALL
                 SELECT country, year, c_newinc, c_notified FROM view_TME_master_notification
-                WHERE year BETWEEN 2000 AND (SELECT max(year - 1) from dcf.latest_notification)
+                WHERE year BETWEEN 2010 AND (SELECT max(year - 1) from dcf.latest_notification)
 				        ORDER BY country, year"
 
 
@@ -94,7 +94,7 @@ plot_faceted <- function(df){
             scale_y_continuous(name = "All notified TB cases (green),new and relapse cases (blue) (number)",
                                labels = rounder) +
 
-            scale_x_continuous(name="", breaks = c(2000, 2005, 2010, 2015, 2020)) +
+            scale_x_continuous(name="", breaks = seq(min(df$year), max(df$year), by=4)) +
 
             facet_wrap(~country,
                        scales="free_y",
